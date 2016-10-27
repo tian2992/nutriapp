@@ -27,7 +27,7 @@ class Metric(models.Model):
     height = models.FloatField()
     standing_or_upright = models.NullBooleanField()
     # TODO: add moar metrics
- 
+
     visit = models.ForeignKey(Visit)  # TODO: check this relationship
 
 
@@ -37,6 +37,3 @@ class Action(models.Model):
     value = models.TextField()
 
     visit = models.ForeignKey(Visit) # TODO: check this relationship
-
-
-
