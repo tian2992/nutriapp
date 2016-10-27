@@ -4,6 +4,7 @@ from .models import *
 
 # Register your models here.
 
+admin.site.register(Family)
 admin.site.register(Patient)
 admin.site.register(Visit)
 admin.site.register(Metric)

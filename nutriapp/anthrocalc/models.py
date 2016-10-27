@@ -6,12 +6,18 @@ from django.utils.timezone import now
 # Create your models here.
 
 
+class Family(models.Model):
+    responsible_name = models.TextField(null=False)
+
+
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
     # Full Name
     name = models.TextField()
     # Day of Birth
     dob = models.DateField()
+
+    family = models.ForeignKey(Family, null=True)
     #TODO: moar info
 
 
