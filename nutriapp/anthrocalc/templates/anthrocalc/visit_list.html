@@ -1,15 +1,15 @@
-<h1>Pacientes</h1>
+<h1>Visitas de pacientes</h1>
 <p>
-    <a href='{% url "patients:new" %}'>Agregar paciente</a>
+    <a href='{% url "Visits:new" %}'>Agregar paciente</a>
 </p>
 <ul>
-    {% for patient in object_list %}
+    {% for visit in object_list %}
         <li>
-            <p>{{ patient.name }}</p>
+            <p>{{ visit.patient.name }} - {{ visit.date }} </p>
             <p>
-                <a href='{% url "patients:detail" patient.id %}'>Ver</a> |
-                <a href='{% url "patients:edit" patient.id %}'>Editar</a> |
-                <a href='{% url "patients:delete" patient.id %}'>Borrar</a>
+                <a href='{% url "Visits:detail" visit.id %}'>Ver</a> |
+                <a href='{% url "Visits:edit" visit.id %}'>Editar</a> |
+                <a href='{% url "Visits:delete" visit.id %}'>Borrar</a>
             </p>
         </li>
     {% endfor %}
