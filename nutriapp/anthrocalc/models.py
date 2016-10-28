@@ -9,6 +9,9 @@ from django.utils.timezone import now
 class Family(models.Model):
     responsible_name = models.TextField(null=False)
 
+    def __str__(self):
+        return self.responsible_name
+
 
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
@@ -18,6 +21,10 @@ class Patient(models.Model):
     dob = models.DateField()
 
     family = models.ForeignKey(Family, null=True)
+
+    def __str__(self):
+        return " de ".join([self.name, self.family.responsible_name])
+
     #TODO: moar info
 
 
@@ -26,6 +33,9 @@ class Visit(models.Model):
     # https://docs.djangoproject.com/en/1.10/ref/models/fields/#django.db.models.DateField.auto_now_add
     date = models.DateTimeField(default=now)
     patient = models.ForeignKey(Patient)
+
+    def __str__(self):
+        return "{} - {}".format(self.patient.name, self.date)
 
 
 class Metric(models.Model):
@@ -42,4 +52,4 @@ class Action(models.Model):
     type = models.TextField()
     value = models.TextField()
 
-    visit = models.ForeignKey(Visit) # TODO: check this relationship
+    visit = models.ForeignKey(Visit)  # TODO: check this relationship
