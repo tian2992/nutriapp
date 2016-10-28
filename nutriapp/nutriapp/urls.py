@@ -19,7 +19,8 @@ from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^', include('anthrocalc.urls', namespace='patients')),
+    url(r'^', include('anthrocalc.patient', namespace='patients')),
+    url(r'^', include('anthrocalc.visit', namespace='Visits')),
     # FIXME namespace should be anthro???
 
 ]

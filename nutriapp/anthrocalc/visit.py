@@ -1,16 +1,16 @@
 from django.conf.urls import url
 from .views import (
-    PatientList,
-    PatientDetail,
-    PatientCreation,
-    PatientUpdate,
-    PatientDelete
+    VisitList,
+    VisitDetail,
+    VisitCreation,
+    VisitUpdate,
+    VisitDelete
 )
 
 urlpatterns = [
-    url(r'^patient/$', PatientList.as_view(), name='patient:list'),
-    url(r'^patient/(?P<pk>\d+)$', PatientDetail.as_view(), name='patient:detail'),
-    url(r'^patient/new$', PatientCreation.as_view(), name='patient:new'),
-    url(r'^patient/edit/(?P<pk>\d+)$', PatientUpdate.as_view(), name='patient:edit'),
-    url(r'^patient/delete/(?P<pk>\d+)$', PatientDelete.as_view(), name='patient:delete'),
+    url(r'^visit/$', VisitList.as_view(), name='list'),
+    url(r'^visit/(?P<pk>\d+)$', VisitDetail.as_view(), name='detail'),
+    url(r'^visit/new$', VisitCreation.as_view(), name='new'),
+    url(r'^visit/edit/(?P<pk>\d+)$', VisitUpdate.as_view(), name='edit'),
+    url(r'^visit/delete/(?P<pk>\d+)$', VisitDelete.as_view(), name='delete'),
 ]
