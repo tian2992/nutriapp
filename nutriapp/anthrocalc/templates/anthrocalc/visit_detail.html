@@ -1,0 +1,9 @@
+<h1>{{ patient.name }}</h1>
+<p>Fecha de nacimiento: <i>{{ patient.dob }}</i></p>
+
+
+
+<p>
+    <a href='{% url "Visita:new" %}'>Regresar</a>
+    <a href='{% url "patients:list" %}'>Regresar</a>
+</p>
