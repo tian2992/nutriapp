@@ -2,15 +2,15 @@
 <p>
     <a href='{% url "patients:new" %}'>Agregar paciente</a>
 </p>
-<ul>
+<table>
     {% for patient in object_list %}
-        <li>
-            <p>{{ patient.name }}</p>
-            <p>
+        <tr>
+            <td>{{ patient.name }}</td>
+            <td>
                 <a href='{% url "patients:detail" patient.id %}'>Ver</a> |
                 <a href='{% url "patients:edit" patient.id %}'>Editar</a> |
                 <a href='{% url "patients:delete" patient.id %}'>Borrar</a>
-            </p>
-        </li>
+            </td>
+        </tr>
     {% endfor %}
-</ul>
+</table>
