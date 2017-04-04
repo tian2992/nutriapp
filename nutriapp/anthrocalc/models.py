@@ -28,7 +28,19 @@ class Patient(models.Model):
     #TODO: moar info
 
 
+class MultipleVisit(models.Model):
+    date = models.DateTimeField(default=now)
+
+
+# A point in time where metrics are taken
 class Visit(models.Model):
+    def __init__(self, *args, **kwargs):
+        super(Visit, self).__init__(*args, **kwargs)
+
+    def __init__(self, multiple_visit, *args, **kwargs):
+        super(Visit, self).__init__(*args, **kwargs)
+        self.date = multiple_visit.date
+
     # TODO: check UTC policy
     # https://docs.djangoproject.com/en/1.10/ref/models/fields/#django.db.models.DateField.auto_now_add
     date = models.DateTimeField(default=now)
@@ -47,7 +59,14 @@ class Metric(models.Model):
     visit = models.ForeignKey(Visit)  # TODO: check this relationship
 
 
-# A class for treatments or actions taken to fix the condition
+## A visit includes a set of metrics, given the living conditions
+class EnvironmentMetric(models.Model):
+
+
+    visit = models.ForeignKey(Visit)
+
+
+# Treatments or actions taken to fix the condition
 class Action(models.Model):
     type = models.TextField()
     value = models.TextField()
