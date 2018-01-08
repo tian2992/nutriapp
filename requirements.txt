@@ -1,2 +1,4 @@
-rpy2
+
 django
+rpy2
+django-contrib-postgres

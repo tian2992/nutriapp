@@ -49,8 +49,9 @@ class VisitDetail(DetailView):
 
 class VisitCreation(CreateView):
     model = Visit
+    metric = Metric
     success_url = reverse_lazy('Visits:list')
-    fields = ['patient', 'date']
+    fields = ['patient', 'date', 'Metric.weight']
     # TODO: add creator with patient id.
 
 
