@@ -1,4 +1,4 @@
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import (
@@ -51,7 +51,8 @@ class VisitCreation(CreateView):
     model = Visit
     metric = Metric
     success_url = reverse_lazy('Visits:list')
-    fields = ['patient', 'date', 'Metric.weight']
+    fields = '__all__'
+    ## fields = ['patient', 'date', ] # 'Metric.weight']
     # TODO: add creator with patient id.
 
 

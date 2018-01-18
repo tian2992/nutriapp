@@ -1,4 +1,4 @@
-
 django
-rpy2
-django-contrib-postgres
+pandas
+git+https://github.com/tian2992/pygrowup/
+#django-contrib-postgres

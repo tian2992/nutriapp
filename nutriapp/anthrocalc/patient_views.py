@@ -7,6 +7,11 @@ from .views import (
     PatientDelete
 )
 
+
+
+app_name="nutriapp"
+
+
 urlpatterns = [
     url(r'^patient/$', PatientList.as_view(), name='list'),
     url(r'^patient/(?P<pk>\d+)$', PatientDetail.as_view(), name='detail'),

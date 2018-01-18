@@ -17,6 +17,8 @@ from django.conf.urls import url, include
 from django.contrib import admin
 
 
+app_name="nutriapp"
+
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include('anthrocalc.patient_views', namespace='patients')),
@@ -24,4 +26,3 @@ urlpatterns = [
     # FIXME namespace should be anthro???
 
 ]
-
