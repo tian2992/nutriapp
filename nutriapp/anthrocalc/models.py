@@ -56,6 +56,11 @@ class Metric(models.Model):
     standing_or_upright = models.NullBooleanField()
     # TODO: add moar metrics
 
+
+    def __str__(self):
+        return "weight: {} - height: {}".format(self.weight, self.height)
+
+
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE)  # TODO: check this relationship
 
 

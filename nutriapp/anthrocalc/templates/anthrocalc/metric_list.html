@@ -1,0 +1,17 @@
+<h1>Listado de Metricas</h1>
+<p>
+    <a href='{% url "metrics:new" %}'>Medir</a>
+</p>
+<ul>
+    {% for metrica in object_list %}
+        <li>
+            <p> Medido: {{ metrica.visit.patient.name }} - {{ metrica.visit.date }}
+             </p>
+            <p>
+                <a href='{% url "metrics:detail" metric.id %}'>Ver</a> |
+                <a href='{% url "metrics:edit" metric.id %}'>Editar</a> |
+                <a href='{% url "metrics:delete" metric.id %}'>Borrar</a>
+            </p>
+        </li>
+    {% endfor %}
+</ul>

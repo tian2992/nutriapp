@@ -46,11 +46,16 @@ class VisitList(ListView):
 class VisitDetail(DetailView):
     model = Visit
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['metrics'] = Metric.objects.filter(visit=self.object.id) 
+        return context
+
 
 class VisitCreation(CreateView):
     model = Visit
     metric = Metric
-    success_url = reverse_lazy('Visits:list')
+    success_url = reverse_lazy('visits:list')
     fields = '__all__'
     ## fields = ['patient', 'date', ] # 'Metric.weight']
     # TODO: add creator with patient id.
@@ -58,13 +63,13 @@ class VisitCreation(CreateView):
 
 class VisitUpdate(UpdateView):
     model = Visit
-    success_url = reverse_lazy('Visits:list')
+    success_url = reverse_lazy('visits:list')
     fields = ['patient', 'date']
 
 
 class VisitDelete(DeleteView):
     model = Visit
-    success_url = reverse_lazy('Visits:list')
+    success_url = reverse_lazy('visits:list')
 
 
 # Views for Metrics
@@ -80,16 +85,17 @@ class MetricDetail(DetailView):
 
 class MetricCreation(CreateView):
     model = Metric
-    success_url = reverse_lazy('Visits:list')
-    fields = ['visit.patient', 'weight', 'height']
+    success_url = reverse_lazy('visits:list')
+    fields = "__all__"
+    # fields = ['visit.patient', 'weight', 'height']
 
 
 class MetricUpdate(UpdateView):
     model = Metric
-    success_url = reverse_lazy('Metric:list')
+    success_url = reverse_lazy('metrics:list', kwargs={'vid': model.visit},)
     fields = ['visit.patient', 'weight', 'height']
 
 
 class MetricDelete(DeleteView):
     model = Metric
-    success_url = reverse_lazy('Metric:list')
+    success_url = reverse_lazy('metrics:list')
