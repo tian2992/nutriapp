@@ -21,8 +21,8 @@ app_name="nutriapp"
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^', include('anthrocalc.patient_views', namespace='patients')),
-    url(r'^', include('anthrocalc.visit_views', namespace='Visits')),
+    url(r'^', include('anthrocalc.patient_views_urls', namespace='patients')),
+    url(r'^', include('anthrocalc.visit_views_urls', namespace='visits')),
     # FIXME namespace should be anthro???
 
 ]
