@@ -1,0 +1,11 @@
+<h1>Medición del paciente: {{ metric.visit.patient.name }}</h1>
+<p>Fecha de visita: <i>{{ metric.visit.date }}</i></p>
+
+
+  {{metric}}
+
+
+<p>
+
+    <a href='{% url "visits:list" %}'>Regresar</a>
+</p>
