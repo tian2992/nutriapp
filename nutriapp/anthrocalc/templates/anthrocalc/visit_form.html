@@ -2,6 +2,8 @@
     {% csrf_token %}
     {{ form.as_p }}
 
-
+    {% if visit.id %}
+    <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Agregar medición</a>
+    {% endif %}
     <input type="submit" value="Submit" />
 </form>
