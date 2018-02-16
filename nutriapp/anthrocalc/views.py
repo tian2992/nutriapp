@@ -48,7 +48,7 @@ class VisitDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['metrics'] = Metric.objects.filter(visit=self.object.id) 
+        context['metrics'] = Metric.objects.filter(visit=self.object.id)
         return context
 
 
@@ -56,9 +56,15 @@ class VisitCreation(CreateView):
     model = Visit
     metric = Metric
     success_url = reverse_lazy('visits:list')
-    fields = '__all__'
+    fields = '__all__' #, metric
     ## fields = ['patient', 'date', ] # 'Metric.weight']
     # TODO: add creator with patient id.
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if "patient" in self.request.GET:
+            initial['patient'] = self.request.GET["patient"]
+        return initial
 
 
 class VisitUpdate(UpdateView):
@@ -87,6 +93,11 @@ class MetricCreation(CreateView):
     model = Metric
     success_url = reverse_lazy('visits:list')
     fields = "__all__"
+    def get_initial(self):
+        initial = super().get_initial()
+        if "visit" in self.request.GET:
+            initial["visit"] = self.request.GET["visit"]
+        return initial
     # fields = ['visit.patient', 'weight', 'height']
 
 

@@ -7,6 +7,6 @@
 
 
 <p>
-    <a href='{% url "visits:new" %}'>Agregar visita al paciente</a>
+    <a href='{% url "visits:new" %}?patient={{ patient.id }}'>Agregar visita al paciente</a>
     <a href='{% url "patients:list" %}'>Regresar</a>
 </p>
