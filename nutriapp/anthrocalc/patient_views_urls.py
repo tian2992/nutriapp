@@ -7,8 +7,6 @@ from .views import (
     PatientDelete
 )
 
-
-
 app_name="nutriapp"
 
 

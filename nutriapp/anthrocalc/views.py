@@ -20,7 +20,8 @@ class PatientDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['visits'] = Visit.objects.filter(patient=self.object.id)
+        visits = Visit.objects.filter(patient=self.object.id)
+        context['visits'] = visits
         return context
 
 

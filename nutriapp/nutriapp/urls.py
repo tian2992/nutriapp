@@ -26,6 +26,7 @@ urlpatterns = [
     url(r'^', include('anthrocalc.patient_views_urls', namespace='patients')),
     url(r'^', include('anthrocalc.visit_views_urls', namespace='visits')),
     url(r'^', include('anthrocalc.metrics_views_urls', namespace='metrics')),
+    url(r'^', include('anthrocalc.urls', namespace='antrobase')),
     # FIXME namespace should be anthro???
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

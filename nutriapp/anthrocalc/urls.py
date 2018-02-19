@@ -1,11 +1,12 @@
 from django.conf.urls import url
-from .views import (
-    PatientList,
-    PatientDetail,
-    PatientCreation,
-    PatientUpdate,
-    PatientDelete
-)
 
+from .patient_graph import simple
+
+
+
+app_name="nutriapp"
+
+#
 urlpatterns = [
+    url(r'charts/simple.png$', simple),
 ]
