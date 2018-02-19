@@ -16,7 +16,8 @@ class Family(models.Model):
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
     # Full Name
-    name = models.TextField()
+    code = models.CharField(max_length=50)
+    name = models.CharField(max_length=250)
     # Day of Birth
     dob = models.DateField()
 
@@ -45,6 +46,7 @@ class Visit(models.Model):
     # https://docs.djangoproject.com/en/1.10/ref/models/fields/#django.db.models.DateField.auto_now_add
     date = models.DateTimeField(default=now)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    notes = models.TextField()
 
     def __str__(self):
         return "{} - {}".format(self.patient.name, self.date)
