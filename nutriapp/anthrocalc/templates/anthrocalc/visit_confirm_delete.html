@@ -1,4 +1,8 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
 <form method="post">{% csrf_token %}
     ¿Estás seguro que deseas borrar esta visita "{{ object }}"?
     <input type="submit" value="Submit" />
 </form>
+{% endblock %}

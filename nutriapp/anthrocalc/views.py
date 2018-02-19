@@ -18,6 +18,11 @@ class PatientList(ListView):
 class PatientDetail(DetailView):
     model = Patient
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['visits'] = Visit.objects.filter(patient=self.object.id)
+        return context
+
 
 class PatientCreation(CreateView):
     model = Patient
@@ -55,10 +60,11 @@ class VisitDetail(DetailView):
 class VisitCreation(CreateView):
     model = Visit
     metric = Metric
-    success_url = reverse_lazy('visits:list')
-    fields = '__all__' #, metric
-    ## fields = ['patient', 'date', ] # 'Metric.weight']
-    # TODO: add creator with patient id.
+    success_url = reverse_lazy('visits:list') ## TODO: redirect to new metric
+    #success_url = reverse_lazy('metrics:newvm')
+    #+"?visit={{visit.id}}"
+    # ", args=metric.id)
+    fields = '__all__'
 
     def get_initial(self):
         initial = super().get_initial()

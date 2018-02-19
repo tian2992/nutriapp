@@ -73,7 +73,7 @@ class EnvironmentMetric(models.Model):
 
 # Treatments or actions taken to fix the condition
 class Action(models.Model):
-    type = models.TextField()
+    action_type = models.TextField()
     value = models.TextField()
 
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE)  # TODO: check this relationship

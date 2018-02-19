@@ -1,3 +1,6 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
@@ -7,3 +10,4 @@
     {% endif %}
     <input type="submit" value="Submit" />
 </form>
+{% endblock %}

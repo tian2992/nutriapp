@@ -1,4 +1,7 @@
-<h1>Visita del paciente: {{ visit.patient.name }}</h1>
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
+<h1>Visita del niño: {{ visit.patient.name }}</h1>
 <p>Fecha de nacimiento: <i>{{ visit.patient.dob }}</i></p>
 <p>Fecha de visita: <i>{{ visit.date }}</i></p>
 
@@ -11,3 +14,4 @@
     <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
     <a href='{% url "visits:list" %}'>Regresar</a>
 </p>
+{% endblock %}

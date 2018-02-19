@@ -1,3 +1,6 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
 <h1>Listado de Visitas</h1>
 <p>
     <a href='{% url "visits:new" %}'>Crear Visita</a>
@@ -14,3 +17,4 @@
         </li>
     {% endfor %}
 </ul>
+{% endblock %}

@@ -1,3 +1,6 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
 <h1>Pacientes</h1>
 <p>
     <a href='{% url "patients:new" %}'>Agregar paciente</a>
@@ -14,3 +17,4 @@
         </tr>
     {% endfor %}
 </table>
+{% endblock %}

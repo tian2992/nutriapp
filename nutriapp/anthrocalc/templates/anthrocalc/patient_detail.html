@@ -1,12 +1,19 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
 <h1>{{ patient.name }}</h1>
 <p>Fecha de nacimiento: <i>{{ patient.dob }}</i></p>
-
-<ul>
-
-</ul>
+<!-- TODO: agregar info de madre -->
+<p>Visitas:</p>
+<ol>
+  {% for visit in visits %}
+    <li><a href={% url 'visits:detail' visit.id %}>{{ visit }}</a></li>
+  {% endfor %}
+</ol>
 
 
 <p>
     <a href='{% url "visits:new" %}?patient={{ patient.id }}'>Agregar visita al paciente</a>
     <a href='{% url "patients:list" %}'>Regresar</a>
 </p>
+{% endblock %}
