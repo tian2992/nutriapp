@@ -6,6 +6,19 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
 
+import child_utils
+
+def graph_for_person(request):
+    person_id = int(request.GET["person_id"])
+    metrics = child_utils.fetch_time_metrics(person_id)
+    print(metrics)
+    ## TODO: calculate & plot
+
+    response=django.http.HttpResponse(content_type='image/png')
+
+    return response
+
+
 def simple(request):
     fig=Figure()
     ax=fig.add_subplot(111)
