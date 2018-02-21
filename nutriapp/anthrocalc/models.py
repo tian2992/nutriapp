@@ -18,6 +18,10 @@ class Patient(models.Model):
     # Full Name
     code = models.CharField(max_length=50)
     name = models.CharField(max_length=250)
+
+    # M or F
+    gender = models.CharField(max_length=1)
+
     # Day of Birth
     dob = models.DateField()
 

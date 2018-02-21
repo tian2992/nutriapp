@@ -11,6 +11,10 @@
   {% endfor %}
 </ol>
 
+<pre>
+  {{ metrics_dict }}
+</pre>
+
 
 <p>
     <a href='{% url "visits:new" %}?patient={{ patient.id }}'>Agregar visita al paciente</a>

@@ -8,6 +8,9 @@ from django.views.generic.edit import (
 )
 from .models import *
 
+from .person_utils import fetch_historical_metrics
+
+
 
 # Views for Patients
 
@@ -22,6 +25,7 @@ class PatientDetail(DetailView):
         context = super().get_context_data(**kwargs)
         visits = Visit.objects.filter(patient=self.object.id)
         context['visits'] = visits
+        context['metrics_dict'] = fetch_historical_metrics(self.object.id)
         return context
 
 

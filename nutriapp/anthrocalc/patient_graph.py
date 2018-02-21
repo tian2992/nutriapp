@@ -6,11 +6,11 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
 
-import child_utils
+from .person_utils import fetch_historical_metrics
 
 def graph_for_person(request):
     person_id = int(request.GET["person_id"])
-    metrics = child_utils.fetch_time_metrics(person_id)
+    metrics = fetch_historical_metrics(person_id)
     print(metrics)
     ## TODO: calculate & plot
 
