@@ -115,7 +115,7 @@ class MetricCreation(CreateView):
 class MetricUpdate(UpdateView):
     model = Metric
     success_url = reverse_lazy('metrics:list', kwargs={'vid': model.visit},)
-    fields = ['visit.patient', 'weight', 'height']
+    fields = ['weight', 'height']
 
 
 class MetricDelete(DeleteView):
