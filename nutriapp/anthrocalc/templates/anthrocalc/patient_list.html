@@ -1,9 +1,9 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
-<h1>Pacientes</h1>
+<h1>Niños registrados:</h1>
 <p>
-    <a href='{% url "patients:new" %}'>Agregar paciente</a>
+    <a href='{% url "patients:new" %}'>Agregar nuevo niño</a>
 </p>
 <table>
     {% for patient in object_list %}

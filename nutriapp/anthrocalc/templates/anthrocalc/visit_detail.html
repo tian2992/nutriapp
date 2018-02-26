@@ -1,17 +1,33 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
-<h1>Visita del niño: {{ visit.patient.name }}</h1>
-<p>Fecha de nacimiento: <i>{{ visit.patient.dob }}</i></p>
-<p>Fecha de visita: <i>{{ visit.date }}</i></p>
+<h1>Visita del niño: <strong>{{ visit.patient.name }}</strong></h1>
+<h2>Información del niño</h2>
+<strong>Código: </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
+<strong>Nombre del familiar: </strong> {{visit.patient.family.responsible_name}} <br/>
+<strong>Nacido en: </strong><i>{{ visit.patient.dob }}</i>
 
+<hr />
+
+<h2>Información de visita</h2>
+<p>Fecha de visita: <i>{{ visit.date }}</i></p>
+<p>
+En esta visita se realizó:<br/>
 {% for metric in metrics %}
-  {{metric}}
+  <h3>Medición:</h3>
+  <strong>Peso:</strong> {{metric.weight}} kg.<br />
+  <strong>Talla:</strong> {{metric.height}} cm.<br />
+  <a href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
 {% endfor %}
 
-<p>
 
+Observaciones: {{visit.notes|default:"n/a"}}
+</p>
+
+<p>
+    {% if not metrics %}
     <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
+    {% endif %}
     <a href='{% url "visits:list" %}'>Regresar</a>
 </p>
 {% endblock %}

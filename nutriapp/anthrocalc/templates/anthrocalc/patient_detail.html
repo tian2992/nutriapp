@@ -1,20 +1,21 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
-<h1>{{ patient.name }}</h1>
+<h1>Información de: {{ patient.name }}</h1>
 <p>Fecha de nacimiento: <i>{{ patient.dob }}</i></p>
 <!-- TODO: agregar info de madre -->
-<p>Visitas:</p>
+
+
 <ol>
-  {% for visit in visits %}
-    <li><a href={% url 'visits:detail' visit.id %}>{{ visit }}</a></li>
-  {% endfor %}
+{% for id, metrical in metrics_dict.items %}
+  <li><a href={% url 'visits:detail' id %}>{{ metrical.date }}</a>
+    {% if metrical.metrics %} <br/>
+    Peso: {{metrical.metrics.weight}} - Talla: {{metrical.metrics.height}}
+    {% endif %}
+  </li>
+  {{metric}}
+{% endfor %}
 </ol>
-
-<pre>
-  {{ metrics_dict }}
-</pre>
-
 
 <p>
     <a href='{% url "visits:new" %}?patient={{ patient.id }}'>Agregar visita al paciente</a>
