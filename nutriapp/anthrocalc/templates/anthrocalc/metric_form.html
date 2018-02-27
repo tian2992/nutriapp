@@ -1,6 +1,14 @@
 {% extends 'anthrocalc/base.html' %}
 
+
 {% block content %}
+<style>
+#id_visit {
+  color:#CCC;
+}
+</style>
+<h1>Creando medición para: {{ visit.patient.name }}</h1>
+
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

@@ -1,7 +1,7 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
-<h1>Visita del niño: <strong>{{ visit.patient.name }}</strong></h1>
+<h1>Visita del niño: <a href='{% url "patients:detail" visit.patient.id %}'><strong>{{ visit.patient.name }}</strong></a></h1>
 <h2>Información del niño</h2>
 <strong>Código: </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
 <strong>Nombre del familiar: </strong> {{visit.patient.family.responsible_name}} <br/>
@@ -14,20 +14,19 @@
 <p>
 En esta visita se realizó:<br/>
 {% for metric in metrics %}
-  <h3>Medición:</h3>
+  <h3><a href='{% url "metrics:detail" metric.id %}'>Medición:</a></h3>
   <strong>Peso:</strong> {{metric.weight}} kg.<br />
   <strong>Talla:</strong> {{metric.height}} cm.<br />
-  <a href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
+  <a class="btn btn-primary" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
 {% endfor %}
-
 
 Observaciones: {{visit.notes|default:"n/a"}}
 </p>
-
+<hr />
 <p>
     {% if not metrics %}
-    <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
+      <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
     {% endif %}
-    <a href='{% url "visits:list" %}'>Regresar</a>
+    <a class="btn btn-secondary" role="button" ref='{% url "visits:list" %}'>Regresar</a>
 </p>
 {% endblock %}

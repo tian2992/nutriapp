@@ -1,11 +1,12 @@
 {% extends 'anthrocalc/base.html' %}
+{% load staticfiles %}
 
 {% block content %}
 <h1>Información de: {{ patient.name }}</h1>
 <p>Fecha de nacimiento: <i>{{ patient.dob }}</i></p>
 <!-- TODO: agregar info de madre -->
 
-
+<h2>Visitas y Medidas</h2>
 <ol>
 {% for id, metrical in metrics_dict.items %}
   <li><a href={% url 'visits:detail' id %}>{{ metrical.date }}</a>
@@ -17,8 +18,12 @@
 {% endfor %}
 </ol>
 
+<a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>Editar información.</a>
+<a class="btn btn-danger" role="button" href='{% url "patients:delete" patient.id %}'>Borrar niño</a>
+<hr />
 <p>
-    <a href='{% url "visits:new" %}?patient={{ patient.id }}'>Agregar visita al paciente</a>
-    <a href='{% url "patients:list" %}'>Regresar</a>
+    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'><img src="{% static '/icons/svg/plus.svg' %}">Agregar visita al paciente</a>
+
+    <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>Regresar</a>
 </p>
 {% endblock %}

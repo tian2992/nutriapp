@@ -3,16 +3,14 @@
 {% block content %}
 <h1>Niños registrados:</h1>
 <p>
-    <a href='{% url "patients:new" %}'>Agregar nuevo niño</a>
+    <a class="btn btn-primary" role="button" href='{% url "patients:new" %}'>Agregar nuevo niño</a>
 </p>
 <table>
     {% for patient in object_list %}
         <tr>
-            <td>{{ patient.name }}</td>
+            <td><a href='{% url "patients:detail" patient.id %}'>{{ patient.name }}</a></td>
             <td>
-                <a href='{% url "patients:detail" patient.id %}'>Ver</a> |
-                <a href='{% url "patients:edit" patient.id %}'>Editar</a> |
-                <a href='{% url "patients:delete" patient.id %}'>Borrar</a>
+                Nacido el: {{patient.dob}}</a>
             </td>
         </tr>
     {% endfor %}

@@ -2,15 +2,20 @@
 
 {% block content %}
 
-<h1>Medición del paciente: {{ metric.visit.patient.name }}</h1>
+<h1>Medición del niño: {{ metric.visit.patient.name }}</h1>
 <p>Fecha de visita: <i>{{ metric.visit.date }}</i></p>
 
-
-  {{metric}}
-
+<strong>Peso:</strong> {{metric.weight}} <br />
+<strong>Altura:</strong> {{metric.height}}
 
 <p>
+  <a href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a><br/>
 
-    <a href='{% url "visits:list" %}'>Regresar</a>
+
+    <a href='{% url "visits:detail" metric.visit.id %}'>Volver a Visita.</a>
+    <a href='{% url "patients:detail" metric.visit.patient.id %}'>Información del Niño.</a>
+    <br />
+    <a href='{% url "visits:list" %}'>Listado de Mediciones.</a>
+
 </p>
 {% endblock %}
