@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Listado de Visitas</h1>
 <p>
-    <a href='{% url "visits:new" %}'>Crear Visita</a>
+    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}'>Crear Visita</a>
 </p>
 <ul>
     {% for visit in object_list %}

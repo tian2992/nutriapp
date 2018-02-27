@@ -3,13 +3,13 @@
 {% block content %}
 <h1>Listado de Metricas</h1>
 <p>
-    <a href='{% url "metrics:new" %}'>Medir</a>
+    <a class="btn btn-primary" role="button" href='{% url "metrics:new" %}'>Crear nueva medición</a>
 </p>
 <ul>
     {% for metrica in object_list %}
         <li>
-            <p> Medido: {{ metrica.visit.patient.name }} - {{ metrica.visit.date }}
-             </p>
+            <p> Medición de: {{ metrica.visit.patient.name }} - {{ metrica.visit.date }}
+            </p>
             <p>
                 <a href='{% url "metrics:detail" metrica.id %}'>Ver</a> |
                 <a href='{% url "metrics:edit" metrica.id %}'>Editar</a> |
