@@ -50,15 +50,15 @@ class Visit(models.Model):
     # https://docs.djangoproject.com/en/1.10/ref/models/fields/#django.db.models.DateField.auto_now_add
     date = models.DateTimeField(default=now)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    notes = models.TextField(verbose_name="Notas")
+    notes = models.TextField(verbose_name="Notas", null=True, blank=True)
 
     def __str__(self):
         return "{} - {}".format(self.patient.name, self.date)
 
 
 class Metric(models.Model):
-    weight = models.FloatField(verbose_name="Peso")
-    height = models.FloatField(verbose_name="Altura")
+    weight = models.FloatField(verbose_name="Peso (kg)")
+    height = models.FloatField(verbose_name="Altura (cm)")
     standing_or_upright = models.NullBooleanField( verbose_name="¿Fue medido de pie / parado?")
     # TODO: add moar metrics
 
@@ -67,7 +67,7 @@ class Metric(models.Model):
         return "weight: {} - height: {}".format(self.weight, self.height)
 
 
-    visit = models.ForeignKey(Visit, on_delete=models.CASCADE, verbose_name="Visita")  # TODO: check this relationship
+    visit = models.OneToOneField(Visit, on_delete=models.CASCADE, verbose_name="Visita")  # TODO: check this relationship
 
 
 ## A visit includes a set of metrics, given the living conditions

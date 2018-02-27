@@ -1,4 +1,4 @@
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import (
@@ -52,6 +52,7 @@ class PatientDelete(DeleteView):
 class VisitList(ListView):
     model = Visit
 
+    ordering = ['-date']
 
 class VisitDetail(DetailView):
     model = Visit
@@ -70,6 +71,9 @@ class VisitCreation(CreateView):
     #+"?visit={{visit.id}}"
     # ", args=metric.id)
     fields = '__all__'
+
+    def get_success_url(self):
+        return reverse('visits:detail',args=(self.object.id,))
 
     def get_initial(self):
         initial = super().get_initial()
@@ -102,20 +106,34 @@ class MetricDetail(DetailView):
 
 class MetricCreation(CreateView):
     model = Metric
-    success_url = reverse_lazy('visits:list')
+    # success_url = reverse_lazy('visits:list')
     fields = "__all__"
+
+    # def get_context_data(self, **kwargs):
+    #     context = super().get_context_data(**kwargs)
+    #     if "visit" in self.request.GET:
+    #         visit_id = self.request.GET["visit"]
+    #         context['visit'] = Visit.objects.filter(id=visit_id)
+    #     return context
+
     def get_initial(self):
         initial = super().get_initial()
         if "visit" in self.request.GET:
-            initial["visit"] = self.request.GET["visit"]
+            visit_id = self.request.GET["visit"]
+            initial["visit"] = visit_id
         return initial
+
+    def get_success_url(self):
+        return reverse('visits:detail',args=(self.object.visit.id,))
     # fields = ['visit.patient', 'weight', 'height']
 
 
 class MetricUpdate(UpdateView):
     model = Metric
-    success_url = reverse_lazy('metrics:list', kwargs={'vid': model.visit},)
-    fields = ['weight', 'height']
+    fields = ['weight', 'height', 'standing_or_upright']
+
+    def get_success_url(self):
+        return reverse('visits:detail',args=(self.object.visit.id,))
 
 
 class MetricDelete(DeleteView):
