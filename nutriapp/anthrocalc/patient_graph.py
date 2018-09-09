@@ -1,4 +1,5 @@
 from .models import *
+import io
 import django
 import random
 import datetime
@@ -20,6 +21,7 @@ def graph_for_person(request):
 
 
 def simple(request):
+    buf = io.BytesIO()
     fig=Figure()
     ax=fig.add_subplot(111)
     x=[]
@@ -34,6 +36,6 @@ def simple(request):
     ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d'))
     fig.autofmt_xdate()
     canvas=FigureCanvas(fig)
-    response=django.http.HttpResponse(content_type='image/png')
-    canvas.print_png(response)
+    canvas.print_png(buf)
+    response=django.http.HttpResponse(buf.getvalue(), content_type='image/png')
     return response
