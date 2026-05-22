@@ -13,7 +13,7 @@ Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
-from django.conf.urls import url, include
+from django.urls import path, include
 from django.contrib import admin
 
 from django.conf import settings
@@ -22,11 +22,11 @@ from django.conf.urls.static import static
 app_name="nutriapp"
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'^', include('anthrocalc.patient_views_urls', namespace='patients')),
-    url(r'^', include('anthrocalc.visit_views_urls', namespace='visits')),
-    url(r'^', include('anthrocalc.metrics_views_urls', namespace='metrics')),
-    url(r'^', include('anthrocalc.urls', namespace='antrobase')),
+    path('admin/', admin.site.urls),
+    path('', include('anthrocalc.patient_views_urls', namespace='patients')),
+    path('', include('anthrocalc.visit_views_urls', namespace='visits')),
+    path('', include('anthrocalc.metrics_views_urls', namespace='metrics')),
+    path('', include('anthrocalc.urls', namespace='antrobase')),
     # FIXME namespace should be anthro???
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

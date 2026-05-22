@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.db import models
 from django.utils.timezone import now
 
@@ -59,7 +57,7 @@ class Visit(models.Model):
 class Metric(models.Model):
     weight = models.FloatField(verbose_name="Peso (kg)")
     height = models.FloatField(verbose_name="Altura (cm)")
-    standing_or_upright = models.NullBooleanField( verbose_name="¿Fue medido de pie / parado?")
+    standing_or_upright = models.BooleanField(null=True, verbose_name="¿Fue medido de pie / parado?")
     # TODO: add moar metrics
 
 

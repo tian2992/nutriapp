@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.urls import path
 from .views import (
     VisitList,
     VisitDetail,
@@ -12,9 +12,9 @@ from .views import (
 app_name="nutriapp"
 
 urlpatterns = [
-    url(r'^visit/$', VisitList.as_view(), name='list'),
-    url(r'^visit/(?P<pk>\d+)$', VisitDetail.as_view(), name='detail'),
-    url(r'^visit/new$', VisitCreation.as_view(), name='new'),
-    url(r'^visit/edit/(?P<pk>\d+)$', VisitUpdate.as_view(), name='edit'),
-    url(r'^visit/delete/(?P<pk>\d+)$', VisitDelete.as_view(), name='delete'),
+    path('visit/', VisitList.as_view(), name='list'),
+    path('visit/<int:pk>', VisitDetail.as_view(), name='detail'),
+    path('visit/new', VisitCreation.as_view(), name='new'),
+    path('visit/edit/<int:pk>', VisitUpdate.as_view(), name='edit'),
+    path('visit/delete/<int:pk>', VisitDelete.as_view(), name='delete'),
 ]
