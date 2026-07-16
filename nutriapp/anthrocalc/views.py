@@ -1,3 +1,5 @@
+import csv
+from django.http import HttpResponse
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
@@ -11,11 +13,65 @@ from .models import *
 from .person_utils import fetch_historical_metrics
 
 
+class ExportableListView(ListView):
+    template_name = 'anthrocalc/generic_list.html'
+    table_fields = []  # List of (field_name, label) tuples
+    title = ""
+    new_url_name = ""
+    edit_url_name = ""
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['fields'] = [f[0] for f in self.table_fields]
+        context['labels'] = [f[1] for f in self.table_fields]
+        context['title'] = self.title
+        if self.new_url_name:
+            context['new_url'] = reverse(self.new_url_name)
+        context['edit_url_name'] = self.edit_url_name
+        return context
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get('export') == 'csv':
+            return self.export_csv()
+        return super().get(request, *args, **kwargs)
+
+    def export_csv(self):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{self.model.__name__.lower()}_list.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([f[1] for f in self.table_fields])
+
+        for obj in self.get_queryset():
+            row = []
+            for field, label in self.table_fields:
+                val = obj
+                for part in field.replace('__', '.').split('.'):
+                    val = getattr(val, part, "")
+                if callable(val):
+                    try:
+                        val = val()
+                    except:
+                        pass
+                row.append(val)
+            writer.writerow(row)
+        return response
+
 
 # Views for Patients
 
-class PatientList(ListView):
+class PatientList(ExportableListView):
     model = Patient
+    title = "Niños registrados"
+    table_fields = [
+        ('id', 'ID'),
+        ('code', 'Código'),
+        ('name', 'Nombre'),
+        ('dob', 'Fecha de Nacimiento'),
+        ('family__responsible_name', 'Familia'),
+    ]
+    new_url_name = 'patients:new'
+    edit_url_name = 'patients:edit'
 
 
 class PatientDetail(DetailView):
@@ -49,8 +105,17 @@ class PatientDelete(DeleteView):
 # Views for Visits
 
 
-class VisitList(ListView):
+class VisitList(ExportableListView):
     model = Visit
+    title = "Listado de Visitas"
+    table_fields = [
+        ('id', 'ID'),
+        ('patient__name', 'Niño'),
+        ('date', 'Fecha'),
+        ('notes', 'Notas'),
+    ]
+    new_url_name = 'visits:new'
+    edit_url_name = 'visits:edit'
 
     ordering = ['-date']
 
@@ -96,8 +161,18 @@ class VisitDelete(DeleteView):
 # Views for Metrics
 
 
-class MetricList(ListView):
+class MetricList(ExportableListView):
     model = Metric
+    title = "Listado de Métricas"
+    table_fields = [
+        ('id', 'ID'),
+        ('visit__patient__name', 'Niño'),
+        ('visit__date', 'Fecha de Visita'),
+        ('weight', 'Peso (kg)'),
+        ('height', 'Altura (cm)'),
+    ]
+    new_url_name = 'metrics:new'
+    edit_url_name = 'metrics:edit'
 
 
 class MetricDetail(DetailView):

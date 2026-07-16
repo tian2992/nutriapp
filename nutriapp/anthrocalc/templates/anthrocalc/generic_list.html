@@ -1,0 +1,39 @@
+{% extends 'anthrocalc/base.html' %}
+{% load utils %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+    {% if new_url %}
+    <a class="btn btn-primary" role="button" href="{{ new_url }}">Crear nuevo</a>
+    {% endif %}
+    <a class="btn btn-secondary" role="button" href="?export=csv">Exportar CSV</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            {% for label in labels %}
+            <th>{{ label }}</th>
+            {% endfor %}
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for object in object_list %}
+        <tr>
+            {% for field in fields %}
+            <td>{{ object|get_attr:field }}</td>
+            {% endfor %}
+            <td>
+                <a href="{{ object.get_absolute_url }}">Ver</a>
+                {% if edit_url_name %}
+                | <a href="{% url edit_url_name object.id %}">Editar</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
