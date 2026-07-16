@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.timezone import now
+from django.urls import reverse
 
 # Create your models here.
 
@@ -24,6 +25,9 @@ class Patient(models.Model):
     dob = models.DateField(verbose_name="Fecha de Nacimiento")
 
     family = models.ForeignKey(Family, on_delete=models.SET_NULL, null=True, verbose_name="Familia")
+
+    def get_absolute_url(self):
+        return reverse('patients:detail', args=[str(self.id)])
 
     def __str__(self):
         return " de ".join([self.name, self.family.responsible_name])
@@ -50,6 +54,9 @@ class Visit(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     notes = models.TextField(verbose_name="Notas", null=True, blank=True)
 
+    def get_absolute_url(self):
+        return reverse('visits:detail', args=[str(self.id)])
+
     def __str__(self):
         return "{} - {}".format(self.patient.name, self.date)
 
@@ -61,11 +68,13 @@ class Metric(models.Model):
     # TODO: add moar metrics
 
 
+    visit = models.OneToOneField(Visit, on_delete=models.CASCADE, verbose_name="Visita")  # TODO: check this relationship
+
+    def get_absolute_url(self):
+        return reverse('metrics:detail', args=[str(self.id)])
+
     def __str__(self):
         return "weight: {} - height: {}".format(self.weight, self.height)
-
-
-    visit = models.OneToOneField(Visit, on_delete=models.CASCADE, verbose_name="Visita")  # TODO: check this relationship
 
 
 ## A visit includes a set of metrics, given the living conditions
