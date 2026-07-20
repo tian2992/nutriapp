@@ -2,4 +2,7 @@ Django>=5.0,<5.1
 pandas
 numpy
 matplotlib
+gunicorn
 git+https://github.com/jbaldivieso/pygrowup2.git
+whitenoise
+#
