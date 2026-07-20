@@ -1,0 +1,14 @@
+{% extends 'anthrocalc/base.html' %}
+
+{% block content %}
+<h1>Observaciones de Entorno para la Visita</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Guardar" />
+</form>
+
+{% url 'patients:list' as patients_list_url %}
+<p><a href="{{ request.GET.next|default:patients_list_url }}">Cancelar</a></p>
+{% endblock %}

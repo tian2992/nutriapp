@@ -7,7 +7,7 @@
   color:#CCC;
 }
 </style>
-<h1>Creando medición para: {{ visit.patient.name }}</h1>
+<h1>Creando medición para: {% if visit %}{{ visit.patient.name }}{% elif patient %}{{ patient.name }}{% else %}Nueva Medición{% endif %}</h1>
 
 <form method="post">
     {% csrf_token %}

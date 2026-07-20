@@ -12,7 +12,73 @@ class Family(models.Model):
         return self.responsible_name
 
 
+class WaterSource(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Fuente de agua")
+    def __str__(self): return self.name
+    class Meta:
+        verbose_name = "Fuente de agua"
+        verbose_name_plural = "Fuentes de agua"
+
+class SanitationType(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Tipo de saneamiento")
+    def __str__(self): return self.name
+    class Meta:
+        verbose_name = "Tipo de saneamiento"
+        verbose_name_plural = "Tipos de saneamiento"
+
+class FloorMaterial(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Material del piso")
+    def __str__(self): return self.name
+    class Meta:
+        verbose_name = "Material del piso"
+        verbose_name_plural = "Materiales del piso"
+
+class WallMaterial(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Material de la pared")
+    def __str__(self): return self.name
+    class Meta:
+        verbose_name = "Material de la pared"
+        verbose_name_plural = "Materiales de la pared"
+
+class RoofMaterial(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Material del techo")
+    def __str__(self): return self.name
+    class Meta:
+        verbose_name = "Material del techo"
+        verbose_name_plural = "Materiales del techo"
+
+
+class HouseholdStatus(models.Model):
+    INCOME_PROXY_CHOICES = [
+        ('low', 'Bajo'),
+        ('medium', 'Medio'),
+        ('high', 'Alto'),
+    ]
+
+    family = models.OneToOneField(Family, on_delete=models.CASCADE, related_name='status', verbose_name="Familia")
+    water_source = models.ForeignKey(WaterSource, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fuente de agua")
+    sanitation_type = models.ForeignKey(SanitationType, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Tipo de saneamiento")
+    floor_material = models.ForeignKey(FloorMaterial, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Material del piso")
+    wall_material = models.ForeignKey(WallMaterial, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Material de las paredes")
+    roof_material = models.ForeignKey(RoofMaterial, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Material del techo")
+    household_income_proxy = models.CharField(max_length=20, choices=INCOME_PROXY_CHOICES, null=True, blank=True, verbose_name="Proxy de ingresos del hogar")
+
+    def __str__(self):
+        return f"Estado de hogar: {self.family.responsible_name}"
+
+    class Meta:
+        verbose_name = "Estado de hogar"
+        verbose_name_plural = "Estados de hogar"
+
+
 class Patient(models.Model):
+    MATERNAL_EDUCATION_CHOICES = [
+        ('none', 'Ninguna'),
+        ('primary', 'Primaria'),
+        ('secondary', 'Secundaria'),
+        ('higher', 'Superior'),
+    ]
+
     id = models.AutoField(primary_key=True)
     # Full Name
     code = models.CharField(max_length=50, verbose_name="Código")
@@ -26,6 +92,13 @@ class Patient(models.Model):
 
     family = models.ForeignKey(Family, on_delete=models.SET_NULL, null=True, verbose_name="Familia")
 
+    # New fields for Step 2
+    mother_name = models.CharField(max_length=250, null=True, blank=True, verbose_name="Nombre de la madre")
+    birth_weight = models.FloatField(null=True, blank=True, verbose_name="Peso al nacer (kg)")
+    birth_length = models.FloatField(null=True, blank=True, verbose_name="Talla al nacer (cm)")
+    maternal_education = models.CharField(max_length=20, choices=MATERNAL_EDUCATION_CHOICES, null=True, blank=True, verbose_name="Educación materna")
+    risk_score = models.FloatField(null=True, blank=True, verbose_name="Puntaje de riesgo")
+
     def get_absolute_url(self):
         return reverse('patients:detail', args=[str(self.id)])
 
@@ -36,6 +109,7 @@ class Patient(models.Model):
 
 
 class MultipleVisit(models.Model):
+    '''Models a visit to a community or group with multiple patients.'''
     date = models.DateTimeField(default=now)
 
 
@@ -53,6 +127,7 @@ class Visit(models.Model):
     date = models.DateTimeField(default=now)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     notes = models.TextField(verbose_name="Notas", null=True, blank=True)
+    multiple_visit = models.ForeignKey(MultipleVisit, on_delete=models.CASCADE, null=True, blank=True)
 
     def get_absolute_url(self):
         return reverse('visits:detail', args=[str(self.id)])
@@ -62,13 +137,34 @@ class Visit(models.Model):
 
 
 class Metric(models.Model):
+    EYE_SIGNS_CHOICES = [
+        ('none', 'Ninguno'),
+        ('bitot_spots', 'Manchas de Bitot'),
+        ('night_blindness', 'Ceguera nocturna'),
+        ('xerophthalmia', 'Xeroftalmia'),
+    ]
+
     weight = models.FloatField(verbose_name="Peso (kg)")
     height = models.FloatField(verbose_name="Altura (cm)")
     standing_or_upright = models.BooleanField(null=True, verbose_name="¿Fue medido de pie / parado?")
-    # TODO: add moar metrics
+    
+    # New clinical fields for Step 1
+    muac = models.FloatField(null=True, blank=True, verbose_name="MUAC (cm)")
+    edema = models.BooleanField(default=False, verbose_name="Edema")
+    eye_signs = models.CharField(max_length=20, choices=EYE_SIGNS_CHOICES, default='none', verbose_name="Signos oculares")
+    diarrhea = models.BooleanField(default=False, verbose_name="Diarrea")
 
+    # Z-score cache fields for Step 1
+    wfaz = models.FloatField(null=True, blank=True, verbose_name="WAZ (Peso para la Edad)")
+    hfaz = models.FloatField(null=True, blank=True, verbose_name="HAZ (Talla para la Edad)")
+    wfhz = models.FloatField(null=True, blank=True, verbose_name="WHZ (Peso para la Talla)")
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, verbose_name="Visita")  # TODO: check this relationship
+
+    def save(self, *args, **kwargs):
+        from .person_utils import calculate_zscore_for_metric
+        calculate_zscore_for_metric(self)
+        super(Metric, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('metrics:detail', args=[str(self.id)])
@@ -79,9 +175,18 @@ class Metric(models.Model):
 
 ## A visit includes a set of metrics, given the living conditions
 class EnvironmentMetric(models.Model):
-
-
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE)
+    
+    # Per-visit observations
+    dietary_diversity_score = models.IntegerField(null=True, blank=True, verbose_name="Puntaje de diversidad dietética (0-9)")
+    breastfeeding = models.BooleanField(default=False, verbose_name="Lactancia materna")
+    immunization_up_to_date = models.BooleanField(default=False, verbose_name="Inmunización al día")
+    recent_illness = models.BooleanField(default=False, verbose_name="Enfermedad reciente")
+    recent_illness_type = models.CharField(max_length=100, null=True, blank=True, verbose_name="Tipo de enfermedad reciente")
+    notes = models.TextField(null=True, blank=True, verbose_name="Notas")
+
+    def __str__(self):
+        return f"Observaciones de entorno: {self.visit}"
 
 
 # Treatments or actions taken to fix the condition

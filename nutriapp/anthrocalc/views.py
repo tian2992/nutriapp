@@ -9,6 +9,7 @@ from django.views.generic.edit import (
     DeleteView
 )
 from .models import *
+from .forms import MetricForm
 
 from .person_utils import fetch_historical_metrics
 
@@ -88,13 +89,13 @@ class PatientDetail(DetailView):
 class PatientCreation(CreateView):
     model = Patient
     success_url = reverse_lazy('patients:list')
-    fields = ['name', 'dob', 'family']
+    fields = ['code', 'name', 'gender', 'dob', 'family', 'mother_name', 'birth_weight', 'birth_length', 'maternal_education']
 
 
 class PatientUpdate(UpdateView):
     model = Patient
     success_url = reverse_lazy('patients:list')
-    fields = ['name', 'dob', 'family']
+    fields = ['code', 'name', 'gender', 'dob', 'family', 'mother_name', 'birth_weight', 'birth_length', 'maternal_education']
 
 
 class PatientDelete(DeleteView):
@@ -125,6 +126,11 @@ class VisitDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['metrics'] = Metric.objects.filter(visit=self.object.id)
+        context['env_metrics'] = EnvironmentMetric.objects.filter(visit=self.object.id)
+        try:
+            context['household_status'] = HouseholdStatus.objects.get(family=self.object.patient.family)
+        except HouseholdStatus.DoesNotExist:
+            context['household_status'] = None
         return context
 
 
@@ -181,22 +187,37 @@ class MetricDetail(DetailView):
 
 class MetricCreation(CreateView):
     model = Metric
-    # success_url = reverse_lazy('visits:list')
-    fields = "__all__"
+    form_class = MetricForm
 
-    # def get_context_data(self, **kwargs):
-    #     context = super().get_context_data(**kwargs)
-    #     if "visit" in self.request.GET:
-    #         visit_id = self.request.GET["visit"]
-    #         context['visit'] = Visit.objects.filter(id=visit_id)
-    #     return context
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if "visit" in self.request.GET:
+            try:
+                context['visit'] = Visit.objects.get(id=self.request.GET["visit"])
+            except Visit.DoesNotExist:
+                pass
+        if "patient" in self.request.GET:
+            try:
+                context['patient'] = Patient.objects.get(id=self.request.GET["patient"])
+            except Patient.DoesNotExist:
+                pass
+        return context
 
     def get_initial(self):
         initial = super().get_initial()
         if "visit" in self.request.GET:
             visit_id = self.request.GET["visit"]
             initial["visit"] = visit_id
+        if "patient" in self.request.GET:
+            initial["patient"] = self.request.GET["patient"]
         return initial
+
+    def form_valid(self, form):
+        if not form.cleaned_data.get('visit'):
+            patient = form.cleaned_data.get('patient')
+            visit = Visit.objects.create(patient=patient)
+            form.instance.visit = visit
+        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse('visits:detail',args=(self.object.visit.id,))
@@ -205,7 +226,7 @@ class MetricCreation(CreateView):
 
 class MetricUpdate(UpdateView):
     model = Metric
-    fields = ['weight', 'height', 'standing_or_upright']
+    fields = ['weight', 'height', 'standing_or_upright', 'muac', 'edema', 'eye_signs', 'diarrhea']
 
     def get_success_url(self):
         return reverse('visits:detail',args=(self.object.visit.id,))
@@ -214,3 +235,63 @@ class MetricUpdate(UpdateView):
 class MetricDelete(DeleteView):
     model = Metric
     success_url = reverse_lazy('metrics:list')
+
+
+class EnvironmentMetricCreation(CreateView):
+    model = EnvironmentMetric
+    fields = ['visit', 'dietary_diversity_score', 'breastfeeding', 'immunization_up_to_date', 'recent_illness',
+              'recent_illness_type', 'notes']
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if "visit" in self.request.GET:
+            initial["visit"] = self.request.GET["visit"]
+        return initial
+
+    def get_success_url(self):
+        return reverse('visits:detail', args=(self.object.visit.id,))
+
+
+class EnvironmentMetricUpdate(UpdateView):
+    model = EnvironmentMetric
+    fields = ['dietary_diversity_score', 'breastfeeding', 'immunization_up_to_date', 'recent_illness',
+              'recent_illness_type', 'notes']
+
+    def get_success_url(self):
+        return reverse('visits:detail', args=(self.object.visit.id,))
+
+
+class HouseholdStatusCreation(CreateView):
+    model = HouseholdStatus
+    fields = ['family', 'water_source', 'sanitation_type', 'floor_material', 'wall_material', 'roof_material',
+              'household_income_proxy']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if "family" in self.request.GET:
+            context['family'] = Family.objects.get(id=self.request.GET["family"])
+        return context
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if "family" in self.request.GET:
+            initial["family"] = self.request.GET["family"]
+        return initial
+
+    def get_success_url(self):
+        # We don't have a direct way back to visit from family easily here without extra context
+        # but usually it's created from patient detail or visit detail
+        if "next" in self.request.GET:
+            return self.request.GET["next"]
+        return reverse('patients:list')
+
+
+class HouseholdStatusUpdate(UpdateView):
+    model = HouseholdStatus
+    fields = ['water_source', 'sanitation_type', 'floor_material', 'wall_material', 'roof_material',
+              'household_income_proxy']
+
+    def get_success_url(self):
+        if "next" in self.request.GET:
+            return self.request.GET["next"]
+        return reverse('patients:list')

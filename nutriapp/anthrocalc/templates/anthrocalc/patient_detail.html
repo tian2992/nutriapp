@@ -23,6 +23,7 @@
 <hr />
 <p>
     <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'><img src="{% static '/icons/svg/plus.svg' %}">Agregar visita al paciente</a>
+    <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?patient={{ patient.id }}'><img src="{% static '/icons/svg/plus.svg' %}">Agregar medición directa</a>
 
     <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>Regresar</a>
 </p>

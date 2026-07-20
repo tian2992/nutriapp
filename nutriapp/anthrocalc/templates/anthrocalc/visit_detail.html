@@ -2,31 +2,74 @@
 
 {% block content %}
 <h1>Visita del niño: <a href='{% url "patients:detail" visit.patient.id %}'><strong>{{ visit.patient.name }}</strong></a></h1>
-<h2>Información del niño</h2>
-<strong>Código: </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
-<strong>Nombre del familiar: </strong> {{visit.patient.family.responsible_name}} <br/>
-<strong>Nacido en: </strong><i>{{ visit.patient.dob }}</i>
+<div>
+    <h2>Información del niño</h2>
+    <strong>Código: </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
+    <strong>Nombre del familiar: </strong> {{visit.patient.family.responsible_name}} <br/>
+    <strong>Nacido en: </strong><i>{{ visit.patient.dob }}</i>
+</div>
 
 <hr />
 
-<h2>Información de visita</h2>
-<p>Fecha de visita: <i>{{ visit.date }}</i></p>
-<p>
-En esta visita se realizó:<br/>
-{% for metric in metrics %}
-  <h3><a href='{% url "metrics:detail" metric.id %}'>Medición:</a></h3>
-  <strong>Peso:</strong> {{metric.weight}} kg.<br />
-  <strong>Talla:</strong> {{metric.height}} cm.<br />
-  <a class="btn btn-primary" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
-{% endfor %}
+<div>
+    <h2>Información de visita</h2>
+    <p>Fecha de visita: <i>{{ visit.date }}</i></p>
+    <p>En esta visita se realizó:</p>
+    {% for metric in metrics %}
+      <div>
+          <h3><a href='{% url "metrics:detail" metric.id %}'>Medición:</a></h3>
+          <strong>Peso:</strong> {{metric.weight}} kg.<br />
+          <strong>Talla:</strong> {{metric.height}} cm.<br />
+          <a class="btn btn-primary" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
+      </div>
+    {% endfor %}
 
-Observaciones: {{visit.notes|default:"n/a"}}
-</p>
+    <p>Observaciones: {{visit.notes|default:"n/a"}}</p>
+</div>
+
 <hr />
-<p>
+
+<div>
+    <h3>Estado del Hogar (Condiciones Generales)</h3>
+    {% if household_status %}
+      <div>
+          <strong>Fuente de agua:</strong> {{ household_status.water_source|default:"n/a" }} <br />
+          <strong>Saneamiento:</strong> {{ household_status.sanitation_type|default:"n/a" }} <br />
+          <strong>Material del piso:</strong> {{ household_status.floor_material|default:"n/a" }} <br />
+          <strong>Material de paredes:</strong> {{ household_status.wall_material|default:"n/a" }} <br />
+          <strong>Material del techo:</strong> {{ household_status.roof_material|default:"n/a" }} <br />
+          <strong>Ingresos (Proxy):</strong> {{ household_status.get_household_income_proxy_display|default:"n/a" }} <br />
+          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:household_edit" household_status.id %}?next={{ request.path }}'>Actualizar Estado de Hogar</a>
+      </div>
+    {% else %}
+      <p>No se ha registrado el estado del hogar para esta familia.</p>
+      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:household_new" %}?family={{visit.patient.family.id}}&next={{ request.path }}'>Registrar Estado de Hogar</a>
+    {% endif %}
+</div>
+
+<hr />
+
+<div>
+    <h3>Observaciones de Entorno (esta visita)</h3>
+    {% for env in env_metrics %}
+      <div>
+          <strong>Puntaje de diversidad dietética:</strong> {{ env.dietary_diversity_score|default:"n/a" }} <br />
+          <strong>Lactancia:</strong> {{ env.breastfeeding|yesno:"Sí,No" }} <br />
+          <strong>Inmunización al día:</strong> {{ env.immunization_up_to_date|yesno:"Sí,No" }} <br />
+          <strong>Enfermedad reciente:</strong> {{ env.recent_illness|yesno:"Sí,No" }} {% if env.recent_illness %}({{ env.recent_illness_type }}){% endif %} <br />
+          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:env_edit" env.id %}'>Editar observaciones</a>
+      </div>
+    {% empty %}
+      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:env_new" %}?visit={{visit.id}}'>Agregar observaciones de visita</a>
+    {% endfor %}
+</div>
+
+<hr />
+
+<div>
     {% if not metrics %}
       <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
     {% endif %}
-    <a class="btn btn-secondary" role="button" ref='{% url "visits:list" %}'>Regresar</a>
-</p>
+    <a class="btn btn-secondary" role="button" href='{% url "visits:list" %}'>Regresar</a>
+</div>
 {% endblock %}
