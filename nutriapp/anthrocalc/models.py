@@ -137,7 +137,7 @@ class Visit(models.Model):
 
 
 class Metric(models.Model):
-    EYE_SIGNS_CHOICES = [
+    VISIBLE_MALNUTRITION = [
         ('none', 'Ninguno'),
         ('bitot_spots', 'Manchas de Bitot'),
         ('night_blindness', 'Ceguera nocturna'),
@@ -151,7 +151,7 @@ class Metric(models.Model):
     # New clinical fields for Step 1
     muac = models.FloatField(null=True, blank=True, verbose_name="MUAC (cm)")
     edema = models.BooleanField(default=False, verbose_name="Edema")
-    eye_signs = models.CharField(max_length=20, choices=EYE_SIGNS_CHOICES, default='none', verbose_name="Signos oculares")
+    visible_signs = models.CharField(max_length=20, choices=VISIBLE_MALNUTRITION, default='none', verbose_name="Signos visibles") ## TODO: multi selector
     diarrhea = models.BooleanField(default=False, verbose_name="Diarrea")
 
     # Z-score cache fields for Step 1
