@@ -226,7 +226,7 @@ class MetricCreation(CreateView):
 
 class MetricUpdate(UpdateView):
     model = Metric
-    fields = ['weight', 'height', 'standing_or_upright', 'muac', 'edema', 'eye_signs', 'diarrhea']
+    form_class = MetricForm
 
     def get_success_url(self):
         return reverse('visits:detail',args=(self.object.visit.id,))

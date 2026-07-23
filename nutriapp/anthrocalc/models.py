@@ -137,22 +137,28 @@ class Visit(models.Model):
 
 
 class Metric(models.Model):
-    VISIBLE_MALNUTRITION = [
-        ('none', 'Ninguno'),
-        ('bitot_spots', 'Manchas de Bitot'),
-        ('night_blindness', 'Ceguera nocturna'),
-        ('xerophthalmia', 'Xeroftalmia'),
-    ]
-
     weight = models.FloatField(verbose_name="Peso (kg)")
     height = models.FloatField(verbose_name="Altura (cm)")
     standing_or_upright = models.BooleanField(null=True, verbose_name="¿Fue medido de pie / parado?")
     
     # New clinical fields for Step 1
     muac = models.FloatField(null=True, blank=True, verbose_name="MUAC (cm)")
+
+    # Danger signs / Complications
     edema = models.BooleanField(default=False, verbose_name="Edema")
-    visible_signs = models.CharField(max_length=20, choices=VISIBLE_MALNUTRITION, default='none', verbose_name="Signos visibles") ## TODO: multi selector
     diarrhea = models.BooleanField(default=False, verbose_name="Diarrea")
+    intractable_vomiting = models.BooleanField(default=False, verbose_name="Vómitos incoercibles")
+    convulsions = models.BooleanField(default=False, verbose_name="Convulsiones")
+    lethargy_not_alert = models.BooleanField(default=False, verbose_name="Letargo / No alerta")
+    unconsciousness = models.BooleanField(default=False, verbose_name="Inconsciencia")
+    hypoglycemia = models.BooleanField(default=False, verbose_name="Hipoglucemia")
+    high_fever = models.BooleanField(default=False, verbose_name="Fiebre alta")
+    hypothermia = models.BooleanField(default=False, verbose_name="Hipotermia")
+    severe_dehydration = models.BooleanField(default=False, verbose_name="Deshidratación severa")
+    lower_respiratory_tract_infection = models.BooleanField(default=False, verbose_name="Infección de las vías respiratorias bajas")
+    severe_anemia = models.BooleanField(default=False, verbose_name="Anemia severa")
+    eye_signs_vit_a = models.BooleanField(default=False, verbose_name="Signos oculares de deficiencia de Vit A")
+    skin_lesions = models.BooleanField(default=False, verbose_name="Lesiones cutáneas")
 
     # Z-score cache fields for Step 1
     wfaz = models.FloatField(null=True, blank=True, verbose_name="WAZ (Peso para la Edad)")

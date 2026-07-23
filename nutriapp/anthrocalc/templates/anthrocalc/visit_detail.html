@@ -20,7 +20,28 @@
           <h3><a href='{% url "metrics:detail" metric.id %}'>Medición:</a></h3>
           <strong>Peso:</strong> {{metric.weight}} kg.<br />
           <strong>Talla:</strong> {{metric.height}} cm.<br />
-          <a class="btn btn-primary" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
+          {% if metric.edema or metric.diarrhea or metric.intractable_vomiting or metric.convulsions or metric.lethargy_not_alert or metric.unconsciousness or metric.hypoglycemia or metric.high_fever or metric.hypothermia or metric.severe_dehydration or metric.lower_respiratory_tract_infection or metric.severe_anemia or metric.eye_signs_vit_a or metric.skin_lesions %}
+            <div class="alert alert-danger mt-2">
+                <strong>¡Atención! Signos de peligro detectados:</strong>
+                <ul class="mb-0">
+                    {% if metric.edema %}<li>Edema</li>{% endif %}
+                    {% if metric.diarrhea %}<li>Diarrea</li>{% endif %}
+                    {% if metric.intractable_vomiting %}<li>Vómitos incoercibles</li>{% endif %}
+                    {% if metric.convulsions %}<li>Convulsiones</li>{% endif %}
+                    {% if metric.lethargy_not_alert %}<li>Letargo / No alerta</li>{% endif %}
+                    {% if metric.unconsciousness %}<li>Inconsciencia</li>{% endif %}
+                    {% if metric.hypoglycemia %}<li>Hipoglucemia</li>{% endif %}
+                    {% if metric.high_fever %}<li>Fiebre alta</li>{% endif %}
+                    {% if metric.hypothermia %}<li>Hipotermia</li>{% endif %}
+                    {% if metric.severe_dehydration %}<li>Deshidratación severa</li>{% endif %}
+                    {% if metric.lower_respiratory_tract_infection %}<li>Infección de las vías respiratorias bajas</li>{% endif %}
+                    {% if metric.severe_anemia %}<li>Anemia severa</li>{% endif %}
+                    {% if metric.eye_signs_vit_a %}<li>Signos oculares de deficiencia de Vit A</li>{% endif %}
+                    {% if metric.skin_lesions %}<li>Lesiones cutáneas</li>{% endif %}
+                </ul>
+            </div>
+          {% endif %}
+          <a class="btn btn-primary mt-2" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
       </div>
     {% endfor %}
 

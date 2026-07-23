@@ -5,8 +5,33 @@
 <h1>Medición del niño: {{ metric.visit.patient.name }}</h1>
 <p>Fecha de visita: <i>{{ metric.visit.date }}</i></p>
 
-<strong>Peso:</strong> {{metric.weight}} <br />
-<strong>Altura:</strong> {{metric.height}}
+<strong>Peso:</strong> {{metric.weight}} kg.<br />
+<strong>Altura:</strong> {{metric.height}} cm.<br />
+<strong>MUAC:</strong> {{metric.muac|default:"n/a"}} cm.<br />
+
+{% if metric.edema or metric.diarrhea or metric.intractable_vomiting or metric.convulsions or metric.lethargy_not_alert or metric.unconsciousness or metric.hypoglycemia or metric.high_fever or metric.hypothermia or metric.severe_dehydration or metric.lower_respiratory_tract_infection or metric.severe_anemia or metric.eye_signs_vit_a or metric.skin_lesions %}
+  <div class="alert alert-danger mt-3">
+      <strong>Signos de peligro detectados:</strong>
+      <ul>
+          {% if metric.edema %}<li>Edema</li>{% endif %}
+          {% if metric.diarrhea %}<li>Diarrea</li>{% endif %}
+          {% if metric.intractable_vomiting %}<li>Vómitos incoercibles</li>{% endif %}
+          {% if metric.convulsions %}<li>Convulsiones</li>{% endif %}
+          {% if metric.lethargy_not_alert %}<li>Letargo / No alerta</li>{% endif %}
+          {% if metric.unconsciousness %}<li>Inconsciencia</li>{% endif %}
+          {% if metric.hypoglycemia %}<li>Hipoglucemia</li>{% endif %}
+          {% if metric.high_fever %}<li>Fiebre alta</li>{% endif %}
+          {% if metric.hypothermia %}<li>Hipotermia</li>{% endif %}
+          {% if metric.severe_dehydration %}<li>Deshidratación severa</li>{% endif %}
+          {% if metric.lower_respiratory_tract_infection %}<li>Infección de las vías respiratorias bajas</li>{% endif %}
+          {% if metric.severe_anemia %}<li>Anemia severa</li>{% endif %}
+          {% if metric.eye_signs_vit_a %}<li>Signos oculares de deficiencia de Vit A</li>{% endif %}
+          {% if metric.skin_lesions %}<li>Lesiones cutáneas</li>{% endif %}
+      </ul>
+  </div>
+{% else %}
+  <p>No se detectaron signos de peligro.</p>
+{% endif %}
 
 <p>
   <a href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a><br/>
