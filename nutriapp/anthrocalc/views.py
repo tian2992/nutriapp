@@ -9,7 +9,7 @@ from django.views.generic.edit import (
     DeleteView
 )
 from .models import *
-from .forms import MetricForm
+from .forms import MetricForm, PatientForm
 
 from .person_utils import fetch_historical_metrics
 
@@ -88,14 +88,14 @@ class PatientDetail(DetailView):
 
 class PatientCreation(CreateView):
     model = Patient
+    form_class = PatientForm
     success_url = reverse_lazy('patients:list')
-    fields = ['code', 'name', 'gender', 'dob', 'family', 'mother_name', 'birth_weight', 'birth_length', 'maternal_education']
 
 
 class PatientUpdate(UpdateView):
     model = Patient
+    form_class = PatientForm
     success_url = reverse_lazy('patients:list')
-    fields = ['code', 'name', 'gender', 'dob', 'family', 'mother_name', 'birth_weight', 'birth_length', 'maternal_education']
 
 
 class PatientDelete(DeleteView):

@@ -1,5 +1,53 @@
 from django import forms
-from .models import Metric, Patient, Visit
+from .models import Metric, Patient, Visit, Family
+
+class PatientForm(forms.ModelForm):
+    new_family_name = forms.CharField(
+        max_length=255, 
+        required=False, 
+        label="O crear nueva familia (nombre del responsable)",
+        help_text="Si no selecciona una familia arriba, puede ingresar el nombre de una nueva aquí."
+    )
+
+    class Meta:
+        model = Patient
+        fields = [
+            'code', 'name', 'gender', 'dob', 'family', 
+            'mother_name', 'birth_weight', 'birth_length', 'maternal_education'
+        ]
+
+    field_order = [
+        'code', 'name', 'gender', 'dob', 'family', 'new_family_name',
+        'mother_name', 'birth_weight', 'birth_length', 'maternal_education'
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['family'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        family = cleaned_data.get("family")
+        new_family_name = cleaned_data.get("new_family_name")
+
+        if not family and not new_family_name:
+             self.add_error('family', "Debe seleccionar una familia existente o ingresar el nombre para una nueva.")
+        
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        new_family_name = self.cleaned_data.get("new_family_name")
+        family = self.cleaned_data.get("family")
+
+        if not family and new_family_name:
+            family = Family.objects.create(responsible_name=new_family_name)
+            instance.family = family
+        
+        if commit:
+            instance.save()
+        return instance
+
 
 class MetricForm(forms.ModelForm):
     patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False, label="Paciente (para crear visita implícita)")
