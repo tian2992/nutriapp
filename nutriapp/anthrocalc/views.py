@@ -268,8 +268,13 @@ class HouseholdStatusCreation(CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if "family" in self.request.GET:
-            context['family'] = Family.objects.get(id=self.request.GET["family"])
+        family_id = self.request.GET.get("family")
+        context['family'] = None
+        if family_id:
+            try:
+                context['family'] = Family.objects.get(id=family_id)
+            except (Family.DoesNotExist, ValueError):
+                pass
         return context
 
     def get_initial(self):
@@ -290,6 +295,11 @@ class HouseholdStatusUpdate(UpdateView):
     model = HouseholdStatus
     fields = ['water_source', 'sanitation_type', 'floor_material', 'wall_material', 'roof_material',
               'household_income_proxy']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['family'] = self.object.family
+        return context
 
     def get_success_url(self):
         if "next" in self.request.GET:

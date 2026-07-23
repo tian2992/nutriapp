@@ -1,11 +1,12 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
-<h1>Estado del Hogar para la Familia: {{ form.instance.family|default:family }}</h1>
+{% load crispy_forms_tags %}
+<h1>Estado del Hogar para la Familia: {% firstof form.instance.family family %}</h1>
 
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {{ form|crispy }}
     <input type="submit" value="Guardar" />
 </form>
 

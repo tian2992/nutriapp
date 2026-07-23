@@ -1,9 +1,10 @@
 {% extends 'anthrocalc/base.html' %}
 
 {% block content %}
+{% load crispy_forms_tags %}
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {{ form|crispy }}
 
     {% if visit.id %}
     <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Agregar medición</a>
