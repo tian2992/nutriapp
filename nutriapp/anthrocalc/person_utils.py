@@ -1,6 +1,25 @@
 from .models import Visit, Metric
 import pygrowup
 import logging
+import datetime
+import math
+
+def calculate_age_at_date(patient, reference_date):
+    """Return age at a reference date in days and months."""
+    if not patient or not patient.dob or not reference_date:
+        return {'days': None, 'months': None}
+
+    if isinstance(reference_date, datetime.datetime):
+        reference_date = reference_date.date()
+
+    if not isinstance(reference_date, datetime.date):
+        return {'days': None, 'months': None}
+
+    dob_days = (reference_date - patient.dob).days
+    age_months = dob_days / 30.4375 if dob_days is not None else None
+    plus_days = dob_days - (math.floor(age_months) * 30.4375 )
+    return {'days': plus_days,"months":math.floor(age_months), 'months_float': age_months, "dob_days": dob_days}
+
 
 def calculate_zscore_for_metric(metric):
     """

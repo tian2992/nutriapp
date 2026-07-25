@@ -13,7 +13,7 @@ from django.views.generic.edit import (
 from .models import *
 from .forms import MetricForm, PatientForm
 
-from .person_utils import fetch_historical_metrics, fetch_metrics_from_visits
+from .person_utils import fetch_historical_metrics, fetch_metrics_from_visits, calculate_age_at_date
 
 
 class ExportableListView(ListView):
@@ -85,6 +85,11 @@ class PatientDetail(DetailView):
         visits: BaseManager[Visit] = Visit.objects.filter(patient=self.object).order_by('date').prefetch_related('metric')
         context['visits'] = visits
         visits_metrics = fetch_metrics_from_visits(visits)
+
+        for item in visits_metrics:
+            age = calculate_age_at_date(self.object, item['visit'].date)
+            item['age_days'] = age['days']
+            item['age_months'] = age['months']
 
         context['visits_metrics'] = visits_metrics
         return context
