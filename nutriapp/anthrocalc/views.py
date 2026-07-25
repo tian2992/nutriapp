@@ -1,5 +1,7 @@
 import csv
+from django.db.models.manager import BaseManager
 from django.http import HttpResponse
+from django.template import context
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
@@ -11,7 +13,7 @@ from django.views.generic.edit import (
 from .models import *
 from .forms import MetricForm, PatientForm
 
-from .person_utils import fetch_historical_metrics
+from .person_utils import fetch_historical_metrics, fetch_metrics_from_visits
 
 
 class ExportableListView(ListView):
@@ -80,14 +82,9 @@ class PatientDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        visits = Visit.objects.filter(patient=self.object).order_by('date').prefetch_related('metric')
-        visits_metrics = []
-        for visit in visits:
-            try:
-                metric = visit.metric
-            except Metric.DoesNotExist:
-                metric = None
-            visits_metrics.append({'visit': visit, 'metric': metric})
+        visits: BaseManager[Visit] = Visit.objects.filter(patient=self.object).order_by('date').prefetch_related('metric')
+        context['visits'] = visits
+        visits_metrics = fetch_metrics_from_visits(visits)
 
         context['visits_metrics'] = visits_metrics
         return context

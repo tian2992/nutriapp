@@ -53,6 +53,10 @@ def calculate_zscore_for_metric(metric):
         logging.error(f"Failed to calculate Z-scores: {e}")
 
 def fetch_historical_metrics(person_id):
+    """
+    Fetches all visits and their associated metrics for a given person (child patient).
+    Returns a dictionary with visit IDs as keys and a dictionary containing the visit date and metrics as values.
+    """
     visits = Visit.objects.filter(patient=person_id)
     metrics = {}
     for v in visits:
@@ -61,8 +65,20 @@ def fetch_historical_metrics(person_id):
         except:
             mets = None
         metrics[v.id] = {"date": v.date, "metrics": mets}
-
     return metrics
+
+def fetch_metrics_from_visits(visits):
+    '''
+    Given a queryset of visits, fetches the associated metrics for each visit.
+    Returns a list of dictionaries containing the visit and its associated metric or empty.'''
+    visits_metrics = []
+    for visit in visits:
+            try:
+                metric = visit.metric
+            except Metric.DoesNotExist:
+                metric = None
+            visits_metrics.append({'visit': visit, 'metric': metric})
+    return visits_metrics
 
 def calculate_indexes():
     pass
