@@ -32,3 +32,14 @@ def get_attr(obj, attr):
                 pass
                 
     return val
+
+@register.filter(name='kg_to_lb')
+def kg_to_lb(weight, precision=1):
+    """Converts a weight in kilograms to pounds."""
+    try:
+        kg = float(weight)
+        lb = kg * 2.20462
+        precision = int(precision)
+        return format(lb, f'.{precision}f')
+    except (TypeError, ValueError):
+        return ""

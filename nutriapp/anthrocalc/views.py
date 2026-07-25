@@ -80,9 +80,16 @@ class PatientDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        visits = Visit.objects.filter(patient=self.object.id)
-        context['visits'] = visits
-        context['metrics_dict'] = fetch_historical_metrics(self.object.id)
+        visits = Visit.objects.filter(patient=self.object).order_by('date').prefetch_related('metric')
+        visits_metrics = []
+        for visit in visits:
+            try:
+                metric = visit.metric
+            except Metric.DoesNotExist:
+                metric = None
+            visits_metrics.append({'visit': visit, 'metric': metric})
+
+        context['visits_metrics'] = visits_metrics
         return context
 
 
