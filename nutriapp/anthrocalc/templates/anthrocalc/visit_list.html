@@ -1,20 +1,39 @@
 {% extends 'anthrocalc/base.html' %}
 {% block content %}
 {% load i18n %}
-<h1>{% translate "Listado de Visitas" %}</h1>
-<p>
-    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}'>{% translate "Crear Visita" %}</a>
-</p>
-<ul>
-    {% for visit in object_list %}
-        <li>
-            <p>{{ visit.patient.name }} - {{ visit.date }} </p>
-            <p>
-                <a href='{% url "visits:detail" visit.id %}'>{% translate "Ver" %}</a> |
-                <a href='{% url "visits:edit" visit.id %}'>{% translate "Editar" %}</a> |
-                <a href='{% url "visits:delete" visit.id %}'>{% translate "Borrar" %}</a>
-            </p>
-        </li>
-    {% endfor %}
-</ul>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h1 class="h3 mb-0">{% translate "Listado de Visitas" %}</h1>
+        <p class="text-muted mb-0">{% translate "Revisa las visitas recientes, accede a los detalles y edita o elimina con un solo clic." %}</p>
+    </div>
+    <a class="btn btn-primary" role="button" href="{% url 'visits:new' %}">{% translate "Crear Visita" %}</a>
+</div>
+<table class="table table-hover table-sm">
+    <thead>
+        <tr>
+            <th scope="col">{% translate "Fecha" %}</th>
+            <th scope="col">{% translate "Niño" %}</th>
+            <th scope="col">{% translate "Notas" %}</th>
+            <th scope="col" class="text-end">{% translate "Acciones" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for visit in object_list %}
+        <tr>
+            <td>{{ visit.date }}</td>
+            <td>{{ visit.patient.name }}</td>
+            <td>{{ visit.notes|default:"Sin notas" }}</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'visits:detail' visit.id %}">{% translate "Ver" %}</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'visits:edit' visit.id %}">{% translate "Editar" %}</a>
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'visits:delete' visit.id %}">{% translate "Borrar" %}</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">{% translate "No hay visitas registradas todavía." %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}

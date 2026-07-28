@@ -1,19 +1,20 @@
 import csv
+
 from django.db.models.manager import BaseManager
 from django.http import HttpResponse
 from django.template import context
-from django.urls import reverse_lazy, reverse
+from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
-from django.views.generic.edit import (
-    CreateView,
-    UpdateView,
-    DeleteView
-)
-from .models import *
-from .forms import MetricForm, PatientForm
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
-from .person_utils import fetch_historical_metrics, fetch_metrics_from_visits, calculate_age_at_date
+from .forms import MetricForm, PatientForm
+from .models import *
+from .person_utils import (
+    calculate_age_at_date,
+    fetch_historical_metrics,
+    fetch_metrics_from_visits,
+)
 
 
 class ExportableListView(ListView):
@@ -65,6 +66,7 @@ class ExportableListView(ListView):
 
 class PatientList(ExportableListView):
     model = Patient
+    template_name = 'anthrocalc/patient_list.html'
     title = "Niños registrados"
     table_fields = [
         ('id', 'ID'),
@@ -178,6 +180,7 @@ class VisitDelete(DeleteView):
 
 class MetricList(ExportableListView):
     model = Metric
+    template_name = 'anthrocalc/metric_list.html'
     title = "Listado de Métricas"
     table_fields = [
         ('id', 'ID'),
