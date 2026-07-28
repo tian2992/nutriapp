@@ -1,0 +1,330 @@
+# Spanish translations for anthrocalc project.
+# Copyright (C) 2026
+# This file is distributed under the same license as the anthrocalc project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-27 00:00-0600\n"
+"PO-Revision-Date: 2026-07-27 00:00-0600\n"
+"Last-Translator: tian\n"
+"Language: es_GT\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# ==================== Navigation & Header (base.html) ====================
+
+msgid "Nutri Acción"
+msgstr "Nutriacción"
+
+msgid "Listado de Niños"
+msgstr "Niños"
+
+msgid "Listado de Visitas"
+msgstr "Visitas"
+
+msgid "Listado de Métricas"
+msgstr "Métricas"
+
+msgid "Mas opciones..."
+msgstr "Más opciones..."
+
+# ==================== Patient (patient_detail.html, patient_list.html, patient_form.html) ====================
+
+msgid "Información de:"
+msgstr "Información de:"
+
+msgid "Sexo:"
+msgstr "Sexo:"
+
+msgid "Fecha de nacimiento:"
+msgstr "Fecha de nacimiento:"
+
+msgid "Visitas y Medidas"
+msgstr "Visitas y Medidas"
+
+msgid "Visita"
+msgstr "Visita"
+
+msgid "Edad"
+msgstr "Edad"
+
+msgid "Peso (kg)"
+msgstr "Peso (kg)"
+
+msgid "Talla (cm)"
+msgstr "Talla (cm)"
+
+msgid "Peso (lb)"
+msgstr "Peso (lb)"
+
+msgid "WFAZ"
+msgstr "WFAZ"
+
+msgid "WHZ"
+msgstr "WHZ"
+
+msgid "No hay visitas registradas aún."
+msgstr "No hay visitas registradas aún."
+
+msgid "Editar información."
+msgstr "Editar información."
+
+msgid "Borrar niño"
+msgstr "Borrar niño"
+
+msgid "Agregar visita al paciente"
+msgstr "Agregar visita al paciente"
+
+msgid "Agregar medición directa"
+msgstr "Agregar medición directa"
+
+msgid "Niños registrados:"
+msgstr "Niños registrados:"
+
+msgid "Agregar nuevo niño"
+msgstr "Agregar nuevo niño"
+
+msgid "Nacido el:"
+msgstr "Nacido el:"
+
+msgid "Regresar"
+msgstr "Regresar"
+
+# ==================== Visit (visit_detail.html, visit_list.html, visit_form.html) ====================
+
+msgid "Visita del niño:"
+msgstr "Visita del niño:"
+
+msgid "Información del niño"
+msgstr "Información del niño"
+
+msgid "Código:"
+msgstr "Código:"
+
+msgid "Nombre del familiar:"
+msgstr "Nombre del familiar:"
+
+msgid "Nacido en:"
+msgstr "Nacido en:"
+
+msgid "Información de visita"
+msgstr "Información de visita"
+
+msgid "Fecha de visita:"
+msgstr "Fecha de visita:"
+
+msgid "En esta visita se realizó:"
+msgstr "En esta visita se realizó:"
+
+msgid "Medición:"
+msgstr "Medición:"
+
+msgid "Observaciones:"
+msgstr "Observaciones:"
+
+msgid "Crear Visita"
+msgstr "Crear Visita"
+
+msgid "Crear nuevo"
+msgstr "Crear nuevo"
+
+msgid "Ver"
+msgstr "Ver"
+
+msgid "Editar"
+msgstr "Editar"
+
+msgid "Borrar"
+msgstr "Borrar"
+
+msgid "Medir"
+msgstr "Medir"
+
+# ==================== Metric (metric_detail.html, metric_list.html, metric_form.html) ====================
+
+msgid "Medición del niño:"
+msgstr "Medición del niño:"
+
+msgid "Peso:"
+msgstr "Peso:"
+
+msgid "Altura:"
+msgstr "Altura:"
+
+msgid "MUAC:"
+msgstr "MUAC:"
+
+msgid "Listado de Metricas"
+msgstr "Listado de Métricas"
+
+msgid "Crear nueva medición"
+msgstr "Crear nueva medición"
+
+msgid "Medición de:"
+msgstr "Medición de:"
+
+msgid "Creando medición para:"
+msgstr "Creando medición para:"
+
+msgid "Nueva Medición"
+msgstr "Nueva Medición"
+
+msgid "Editar esta medición."
+msgstr "Editar esta medición."
+
+# ==================== Danger Signs ====================
+
+msgid "Signos de peligro detectados:"
+msgstr "Signos de peligro detectados:"
+
+msgid "¡Atención! Signos de peligro detectados:"
+msgstr "¡Atención! Signos de peligro detectados:"
+
+msgid "No se detectaron signos de peligro."
+msgstr "No se detectaron signos de peligro."
+
+msgid "Edema"
+msgstr "Edema"
+
+msgid "Diarrea"
+msgstr "Diarrea"
+
+msgid "Vómitos incoercibles"
+msgstr "Vómitos incoercibles"
+
+msgid "Convulsiones"
+msgstr "Convulsiones"
+
+msgid "Letargo / No alerta"
+msgstr "Letargo / No alerta"
+
+msgid "Inconsciencia"
+msgstr "Inconsciencia"
+
+msgid "Hipoglucemia"
+msgstr "Hipoglucemia"
+
+msgid "Fiebre alta"
+msgstr "Fiebre alta"
+
+msgid "Hipotermia"
+msgstr "Hipotermia"
+
+msgid "Deshidratación severa"
+msgstr "Deshidratación severa"
+
+msgid "Infección de las vías respiratorias bajas"
+msgstr "Infección de las vías respiratorias bajas"
+
+msgid "Anemia severa"
+msgstr "Anemia severa"
+
+msgid "Signos oculares de deficiencia de Vit A"
+msgstr "Signos oculares de deficiencia de Vit A"
+
+msgid "Lesiones cutáneas"
+msgstr "Lesiones cutáneas"
+
+# ==================== Household (household status) ====================
+
+msgid "Estado del Hogar (Condiciones Generales)"
+msgstr "Estado del Hogar (Condiciones Generales)"
+
+msgid "Fuente de agua:"
+msgstr "Fuente de agua:"
+
+msgid "Saneamiento:"
+msgstr "Saneamiento:"
+
+msgid "Material del piso:"
+msgstr "Material del piso:"
+
+msgid "Material de paredes:"
+msgstr "Material de paredes:"
+
+msgid "Material del techo:"
+msgstr "Material del techo:"
+
+msgid "Ingresos (Proxy):"
+msgstr "Ingresos (Proxy):"
+
+msgid "Actualizar Estado de Hogar"
+msgstr "Actualizar Estado de Hogar"
+
+msgid "No se ha registrado el hogar para esta familia."
+msgstr "No se ha registrado el hogar para esta familia."
+
+msgid "Registrar Estado de Hogar"
+msgstr "Registrar Estado de Hogar"
+
+# ==================== Environment Observations ====================
+
+msgid "Observaciones de Entorno (esta visita)"
+msgstr "Observaciones de Entorno (esta visita)"
+
+msgid "Puntaje de diversidad dietética:"
+msgstr "Puntaje de diversidad dietética:"
+
+msgid "Lactancia:"
+msgstr "Lactancia:"
+
+msgid "Inmunización al día:"
+msgstr "Inmunización al día:"
+
+msgid "Enfermedad reciente:"
+msgstr "Enfermedad reciente:"
+
+msgid "Agregar observaciones de visita"
+msgstr "Agregar observaciones de visita"
+
+msgid "Observaciones de Entorno para la Visita"
+msgstr "Observaciones de Entorno para la Visita"
+
+# ==================== Forms ====================
+
+msgid "Submit"
+msgstr "Enviar"
+
+msgid "Guardar"
+msgstr "Guardar"
+
+msgid "Cancelar"
+msgstr "Cancelar"
+
+msgid "Exportar CSV"
+msgstr "Exportar CSV"
+
+msgid "Acciones"
+msgstr "Acciones"
+
+# ==================== Delete Confirmations ====================
+
+msgid "¿Estás seguro que deseas borrar el paciente \"{{ object }}\"?"
+msgstr "¿Estás seguro que deseas borrar el paciente \"{{ object }}\"?"
+
+msgid "¿Estás seguro que deseas borrar esta visita \"{{ object }}\"?"
+msgstr "¿Estás seguro que deseas borrar esta visita \"{{ object }}\"?"
+
+# ==================== Edit Links ====================
+
+msgid "Editar observaciones"
+msgstr "Editar observaciones"
+
+# ==================== Patient Info Links ====================
+
+msgid "Volver a Visita."
+msgstr "Volver a Visita."
+
+msgid "Información del Niño."
+msgstr "Información del Niño."
+
+msgid "Listado de Mediciones."
+msgstr "Listado de Mediciones."
+
+# ==================== Household Status ====================
+
+msgid "Estado del Hogar para la Familia:"
+msgstr "Estado del Hogar para la Familia:"
