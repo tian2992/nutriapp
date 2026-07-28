@@ -1,17 +1,17 @@
 {% extends 'anthrocalc/base.html' %}
-
-
 {% block content %}
+{% load crispy_forms_tags %}
+{% load i18n %}
 <style>
 #id_visit {
   color:#CCC;
 }
 </style>
-<h1>Creando medición para: {% if visit %}{{ visit.patient.name }}{% elif patient %}{{ patient.name }}{% else %}Nueva Medición{% endif %}</h1>
+<h1>{% translate "Creando medición para:" %} {% if visit %}{{ visit.patient.name }}{% elif patient %}{{ patient.name }}{% else %}{% translate "Nueva Medición" %}{% endif %}</h1>
 
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Submit" />
+    {{ form|crispy }}
+    <input type="submit" value="{% translate "Submit" %}" />
 </form>
 {% endblock %}

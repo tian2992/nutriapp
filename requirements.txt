@@ -1,8 +1,11 @@
 Django>=5.0,<5.1
 pandas
 numpy
+dotenv
 matplotlib
 gunicorn
 git+https://github.com/jbaldivieso/pygrowup2.git
 whitenoise
+django-crispy-forms<2.4
+crispy-bootstrap4
 #

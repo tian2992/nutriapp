@@ -1,18 +1,40 @@
 {% extends 'anthrocalc/base.html' %}
-
 {% block content %}
-<h1>Niños registrados:</h1>
-<p>
-    <a class="btn btn-primary" role="button" href='{% url "patients:new" %}'>Agregar nuevo niño</a>
-</p>
-<table>
-    {% for patient in object_list %}
+{% load i18n %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h1 class="h3 mb-0">{% translate "Niños registrados" %}</h1>
+        <p class="text-muted mb-0">{% translate "Consulta los datos básicos de cada niño y accede a su historial de visitas." %}</p>
+    </div>
+    <a class="btn btn-primary" role="button" href="{% url 'patients:new' %}">{% translate "Agregar nuevo niño" %}</a>
+</div>
+<table class="table table-striped table-sm">
+    <thead>
         <tr>
-            <td><a href='{% url "patients:detail" patient.id %}'>{{ patient.name }}</a></td>
-            <td>
-                Nacido el: {{patient.dob}}</a>
+            <th scope="col">{% translate "Código" %}</th>
+            <th scope="col">{% translate "Nombre" %}</th>
+            <th scope="col">{% translate "Fecha de Nacimiento" %}</th>
+            <th scope="col">{% translate "Familia" %}</th>
+            <th scope="col" class="text-end">{% translate "Acciones" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for patient in object_list %}
+        <tr>
+            <td>{{ patient.code }}</td>
+            <td><a href="{% url 'patients:detail' patient.id %}">{{ patient.name }}</a></td>
+            <td>{{ patient.dob }}</td>
+            <td>{{ patient.family.responsible_name|default:"Sin familia asignada" }}</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'patients:detail' patient.id %}">{% translate "Ver" %}</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'patients:edit' patient.id %}">{% translate "Editar" %}</a>
             </td>
         </tr>
-    {% endfor %}
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">{% translate "No hay niños registrados aún." %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
 {% endblock %}

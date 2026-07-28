@@ -1,13 +1,14 @@
 {% extends 'anthrocalc/base.html' %}
-
 {% block content %}
+{% load crispy_forms_tags %}
+{% load i18n %}
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {{ form|crispy }}
 
     {% if visit.id %}
-    <a href='{% url "metrics:new" %}?visit={{visit.id}}'>Agregar medición</a>
+    <a href='{% url "metrics:new" %}?visit={{visit.id}}'>{% translate "Agregar medición" %}</a>
     {% endif %}
-    <input type="submit" value="Submit" />
+    <input type="submit" value="{% translate "Submit" %}" />
 </form>
 {% endblock %}
