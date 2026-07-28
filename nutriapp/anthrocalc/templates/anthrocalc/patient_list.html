@@ -1,16 +1,16 @@
 {% extends 'anthrocalc/base.html' %}
-
 {% block content %}
-<h1>Niños registrados:</h1>
+{% load i18n %}
+<h1>{% translate "Niños registrados:" %}</h1>
 <p>
-    <a class="btn btn-primary" role="button" href='{% url "patients:new" %}'>Agregar nuevo niño</a>
+    <a class="btn btn-primary" role="button" href='{% url "patients:new" %}'>{% translate "Agregar nuevo niño" %}</a>
 </p>
 <table>
     {% for patient in object_list %}
         <tr>
             <td><a href='{% url "patients:detail" patient.id %}'>{{ patient.name }}</a></td>
             <td>
-                Nacido el: {{patient.dob}}</a>
+                {% translate "Nacido el:" %} {{patient.dob}}</a>
             </td>
         </tr>
     {% endfor %}

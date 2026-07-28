@@ -1,19 +1,19 @@
 {% extends 'anthrocalc/base.html' %}
-
 {% block content %}
-<h1>Listado de Metricas</h1>
+{% load i18n %}
+<h1>{% translate "Listado de Metricas" %}</h1>
 <p>
-    <a class="btn btn-primary" role="button" href='{% url "metrics:new" %}'>Crear nueva medición</a>
+    <a class="btn btn-primary" role="button" href='{% url "metrics:new" %}'>{% translate "Crear nueva medición" %}</a>
 </p>
 <ul>
     {% for metrica in object_list %}
         <li>
-            <p> Medición de: {{ metrica.visit.patient.name }} - {{ metrica.visit.date }}
+            <p>{% translate "Medición de:" %} {{ metrica.visit.patient.name }} - {{ metrica.visit.date }}
             </p>
             <p>
-                <a href='{% url "metrics:detail" metrica.id %}'>Ver</a> |
-                <a href='{% url "metrics:edit" metrica.id %}'>Editar</a> |
-                <a href='{% url "metrics:delete" metrica.id %}'>Borrar</a>
+                <a href='{% url "metrics:detail" metrica.id %}'>{% translate "Ver" %}</a> |
+                <a href='{% url "metrics:edit" metrica.id %}'>{% translate "Editar" %}</a> |
+                <a href='{% url "metrics:delete" metrica.id %}'>{% translate "Borrar" %}</a>
             </p>
         </li>
     {% endfor %}

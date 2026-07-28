@@ -1,30 +1,31 @@
 {% extends 'anthrocalc/base.html' %}
 {% load static %}
 {% load utils %}
+{% load i18n %}
 
 {% block content %}
-<h1>Información de: {{ patient.name }}</h1>
+<h1>{% translate "Información de:" %} {{ patient.name }}</h1>
 <div class="patient-info card-body">
     <dl class='row'>
-        <dt class="col-sm-2 text-md-right">Sexo:</dt>
+        <dt class="col-sm-2 text-md-right">{% translate "Sexo:" %}</dt>
         <dd class="col-sm-10"><i>{{ patient.gender }}</i></dd>
-        <dt class="col-sm-2 text-md-right">Fecha de nacimiento:</dt>
+        <dt class="col-sm-2 text-md-right">{% translate "Fecha de nacimiento:" %}</dt>
         <dd class="col-sm-10"><i>{{ patient.dob }}</i></dd>
     </dl>
 </div>
 
 <!-- TODO: agregar info de madre -->
 
-<h2>Visitas y Medidas</h2>
+<h2>{% translate "Visitas y Medidas" %}</h2>
 {% if visits_metrics %}
 <table class="table table-striped">
   <thead>
     <tr>
-      <th>Visita</th>
-      <th>Edad</th>
-      <th>Peso (kg)</th>
-      <th>Talla (cm)</th>
-      <th>Peso (lb)</th>
+      <th>{% translate "Visita" %}</th>
+      <th>{% translate "Edad" %}</th>
+      <th>{% translate "Peso (kg)" %}</th>
+      <th>{% translate "Talla (cm)" %}</th>
+      <th>{% translate "Peso (lb)" %}</th>
       <th>WFAZ</th>
       <th>WHZ</th>
     </tr>
@@ -80,16 +81,16 @@
   </tbody>
 </table>
 {% else %}
-<p>No hay visitas registradas aún.</p>
+<p>{% translate "No hay visitas registradas aún." %}</p>
 {% endif %}
 
-<a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>Editar información.</a>
-<a class="btn btn-danger" role="button" href='{% url "patients:delete" patient.id %}'>Borrar niño</a>
+<a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>{% translate "Editar información." %}</a>
+<a class="btn btn-danger" role="button" href='{% url "patients:delete" patient.id %}'>{% translate "Borrar niño" %}</a>
 <hr />
 <p>
-    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'> ➕ 📋 Agregar visita al paciente</a>
-    <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?patient={{ patient.id }}'> ➕ 📊 Agregar medición directa</a>
+    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'> ➕ 📋 {% translate "Agregar visita al paciente" %}</a>
+    <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?patient={{ patient.id }}'> ➕ 📊 {% translate "Agregar medición directa" %}</a>
 
-    <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>Regresar</a>
+    <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>{% translate "Regresar" %}</a>
 </p>
 {% endblock %}

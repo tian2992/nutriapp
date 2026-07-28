@@ -1,15 +1,15 @@
 {% extends 'anthrocalc/base.html' %}
-
 {% block content %}
 {% load crispy_forms_tags %}
-<h1>Observaciones de Entorno para la Visita</h1>
+{% load i18n %}
+<h1>{% translate "Observaciones de Entorno para la Visita" %}</h1>
 
 <form method="post">
     {% csrf_token %}
     {{ form|crispy }}
-    <input type="submit" value="Guardar" />
+    <input type="submit" value="{% translate "Guardar" %}" />
 </form>
 
 {% url 'patients:list' as patients_list_url %}
-<p><a href="{{ request.GET.next|default:patients_list_url }}">Cancelar</a></p>
+<p><a href="{{ request.GET.next|default:patients_list_url }}">{% translate "Cancelar" %}</a></p>
 {% endblock %}

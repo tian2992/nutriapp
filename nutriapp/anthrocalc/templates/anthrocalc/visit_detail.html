@@ -1,87 +1,88 @@
 {% extends 'anthrocalc/base.html' %}
+{% load i18n %}
 
 {% block content %}
-<h1>Visita del niño: <a href='{% url "patients:detail" visit.patient.id %}'><strong>{{ visit.patient.name }}</strong></a></h1>
+<h1>{% translate "Visita del niño:" %} <a href='{% url "patients:detail" visit.patient.id %}'><strong>{{ visit.patient.name }}</strong></a></h1>
 <div>
-    <h2>Información del niño</h2>
-    <strong>Código: </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
-    <strong>Nombre del familiar: </strong> {{visit.patient.family.responsible_name}} <br/>
-    <strong>Nacido en: </strong><i>{{ visit.patient.dob }}</i>
+    <h2>{% translate "Información del niño" %}</h2>
+    <strong>{% translate "Código:" %} </strong> {% firstof visit.patient.code visit.patient.id %}<br/>
+    <strong>{% translate "Nombre del familiar:" %} </strong> {{visit.patient.family.responsible_name}} <br/>
+    <strong>{% translate "Nacido en:" %} </strong><i>{{ visit.patient.dob }}</i>
 </div>
 
 <hr />
 
 <div>
-    <h2>Información de visita</h2>
-    <p>Fecha de visita: <i>{{ visit.date }}</i></p>
-    <p>En esta visita se realizó:</p>
+    <h2>{% translate "Información de visita" %}</h2>
+    <p>{% translate "Fecha de visita:" %} <i>{{ visit.date }}</i></p>
+    <p>{% translate "En esta visita se realizó:" %}</p>
     {% for metric in metrics %}
       <div>
-          <h3><a href='{% url "metrics:detail" metric.id %}'>Medición:</a></h3>
-          <strong>Peso:</strong> {{metric.weight}} kg.<br />
-          <strong>Talla:</strong> {{metric.height}} cm.<br />
+          <h3><a href='{% url "metrics:detail" metric.id %}'>{% translate "Medición:" %}</a></h3>
+          <strong>{% translate "Peso:" %} {{metric.weight}} kg.<br />
+          <strong>{% translate "Altura:" %} {{metric.height}} cm.<br />
           {% if metric.edema or metric.diarrhea or metric.intractable_vomiting or metric.convulsions or metric.lethargy_not_alert or metric.unconsciousness or metric.hypoglycemia or metric.high_fever or metric.hypothermia or metric.severe_dehydration or metric.lower_respiratory_tract_infection or metric.severe_anemia or metric.eye_signs_vit_a or metric.skin_lesions %}
             <div class="alert alert-danger mt-2">
-                <strong>¡Atención! Signos de peligro detectados:</strong>
+                <strong>{% translate "¡Atención! Signos de peligro detectados:" %}</strong>
                 <ul class="mb-0">
-                    {% if metric.edema %}<li>Edema</li>{% endif %}
-                    {% if metric.diarrhea %}<li>Diarrea</li>{% endif %}
-                    {% if metric.intractable_vomiting %}<li>Vómitos incoercibles</li>{% endif %}
-                    {% if metric.convulsions %}<li>Convulsiones</li>{% endif %}
-                    {% if metric.lethargy_not_alert %}<li>Letargo / No alerta</li>{% endif %}
-                    {% if metric.unconsciousness %}<li>Inconsciencia</li>{% endif %}
-                    {% if metric.hypoglycemia %}<li>Hipoglucemia</li>{% endif %}
-                    {% if metric.high_fever %}<li>Fiebre alta</li>{% endif %}
-                    {% if metric.hypothermia %}<li>Hipotermia</li>{% endif %}
-                    {% if metric.severe_dehydration %}<li>Deshidratación severa</li>{% endif %}
-                    {% if metric.lower_respiratory_tract_infection %}<li>Infección de las vías respiratorias bajas</li>{% endif %}
-                    {% if metric.severe_anemia %}<li>Anemia severa</li>{% endif %}
-                    {% if metric.eye_signs_vit_a %}<li>Signos oculares de deficiencia de Vit A</li>{% endif %}
-                    {% if metric.skin_lesions %}<li>Lesiones cutáneas</li>{% endif %}
+                    {% if metric.edema %}<li>{% translate "Edema" %}</li>{% endif %}
+                    {% if metric.diarrhea %}<li>{% translate "Diarrea" %}</li>{% endif %}
+                    {% if metric.intractable_vomiting %}<li>{% translate "Vómitos incoercibles" %}</li>{% endif %}
+                    {% if metric.convulsions %}<li>{% translate "Convulsiones" %}</li>{% endif %}
+                    {% if metric.lethargy_not_alert %}<li>{% translate "Letargo / No alerta" %}</li>{% endif %}
+                    {% if metric.unconsciousness %}<li>{% translate "Inconsciencia" %}</li>{% endif %}
+                    {% if metric.hypoglycemia %}<li>{% translate "Hipoglucemia" %}</li>{% endif %}
+                    {% if metric.high_fever %}<li>{% translate "Fiebre alta" %}</li>{% endif %}
+                    {% if metric.hypothermia %}<li>{% translate "Hipotermia" %}</li>{% endif %}
+                    {% if metric.severe_dehydration %}<li>{% translate "Deshidratación severa" %}</li>{% endif %}
+                    {% if metric.lower_respiratory_tract_infection %}<li>{% translate "Infección de las vías respiratorias bajas" %}</li>{% endif %}
+                    {% if metric.severe_anemia %}<li>{% translate "Anemia severa" %}</li>{% endif %}
+                    {% if metric.eye_signs_vit_a %}<li>{% translate "Signos oculares de deficiencia de Vit A" %}</li>{% endif %}
+                    {% if metric.skin_lesions %}<li>{% translate "Lesiones cutáneas" %}</li>{% endif %}
                 </ul>
             </div>
           {% endif %}
-          <a class="btn btn-primary mt-2" role="button" href='{% url "metrics:edit" metric.id %}'>Editar esta medición.</a>
+          <a class="btn btn-primary mt-2" role="button" href='{% url "metrics:edit" metric.id %}'>{% translate "Editar esta medición." %}</a>
       </div>
     {% endfor %}
 
-    <p>Observaciones: {{visit.notes|default:"n/a"}}</p>
+    <p>{% translate "Observaciones:" %} {{visit.notes|default:"n/a"}}</p>
 </div>
 
 <hr />
 
 <div>
-    <h3>Estado del Hogar (Condiciones Generales)</h3>
+    <h3>{% translate "Estado del Hogar (Condiciones Generales)" %}</h3>
     {% if household_status %}
       <div>
-          <strong>Fuente de agua:</strong> {{ household_status.water_source|default:"n/a" }} <br />
-          <strong>Saneamiento:</strong> {{ household_status.sanitation_type|default:"n/a" }} <br />
-          <strong>Material del piso:</strong> {{ household_status.floor_material|default:"n/a" }} <br />
-          <strong>Material de paredes:</strong> {{ household_status.wall_material|default:"n/a" }} <br />
-          <strong>Material del techo:</strong> {{ household_status.roof_material|default:"n/a" }} <br />
-          <strong>Ingresos (Proxy):</strong> {{ household_status.get_household_income_proxy_display|default:"n/a" }} <br />
-          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:household_edit" household_status.id %}?next={{ request.path }}'>Actualizar Estado de Hogar</a>
+          <strong>{% translate "Fuente de agua:" %} {{ household_status.water_source|default:"n/a" }} <br />
+          <strong>{% translate "Saneamiento:" %} {{ household_status.sanitation_type|default:"n/a" }} <br />
+          <strong>{% translate "Material del piso:" %} {{ household_status.floor_material|default:"n/a" }} <br />
+          <strong>{% translate "Material de paredes:" %} {{ household_status.wall_material|default:"n/a" }} <br />
+          <strong>{% translate "Material del techo:" %} {{ household_status.roof_material|default:"n/a" }} <br />
+          <strong>{% translate "Ingresos (Proxy):" %} {{ household_status.get_household_income_proxy_display|default:"n/a" }} <br />
+          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:household_edit" household_status.id %}?next={{ request.path }}'>{% translate "Actualizar Estado de Hogar" %}</a>
       </div>
     {% else %}
-      <p>No se ha registrado el estado del hogar para esta familia.</p>
-      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:household_new" %}?family={{visit.patient.family.id}}&next={{ request.path }}'>Registrar Estado de Hogar</a>
+      <p>{% translate "No se ha registrado el hogar para esta familia." %}</p>
+      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:household_new" %}?family={{visit.patient.family.id}}&next={{ request.path }}'>{% translate "Registrar Estado de Hogar" %}</a>
     {% endif %}
 </div>
 
 <hr />
 
 <div>
-    <h3>Observaciones de Entorno (esta visita)</h3>
+    <h3>{% translate "Observaciones de Entorno (esta visita)" %}</h3>
     {% for env in env_metrics %}
       <div>
-          <strong>Puntaje de diversidad dietética:</strong> {{ env.dietary_diversity_score|default:"n/a" }} <br />
-          <strong>Lactancia:</strong> {{ env.breastfeeding|yesno:"Sí,No" }} <br />
-          <strong>Inmunización al día:</strong> {{ env.immunization_up_to_date|yesno:"Sí,No" }} <br />
-          <strong>Enfermedad reciente:</strong> {{ env.recent_illness|yesno:"Sí,No" }} {% if env.recent_illness %}({{ env.recent_illness_type }}){% endif %} <br />
-          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:env_edit" env.id %}'>Editar observaciones</a>
+          <strong>{% translate "Puntaje de diversidad dietética:" %} {{ env.dietary_diversity_score|default:"n/a" }} <br />
+          <strong>{% translate "Lactancia:" %} {{ env.breastfeeding|yesno:"Sí,No" }} <br />
+          <strong>{% translate "Inmunización al día:" %} {{ env.immunization_up_to_date|yesno:"Sí,No" }} <br />
+          <strong>{% translate "Enfermedad reciente:" %} {{ env.recent_illness|yesno:"Sí,No" }} {% if env.recent_illness %}({{ env.recent_illness_type }}){% endif %} <br />
+          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:env_edit" env.id %}'>{% translate "Editar observaciones" %}</a>
       </div>
     {% empty %}
-      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:env_new" %}?visit={{visit.id}}'>Agregar observaciones de visita</a>
+      <a class="btn btn-sm btn-info" role="button" href='{% url "visits:env_new" %}?visit={{visit.id}}'>{% translate "Agregar observaciones de visita" %}</a>
     {% endfor %}
 </div>
 
@@ -89,8 +90,8 @@
 
 <div>
     {% if not metrics %}
-      <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?visit={{visit.id}}'>Medir</a>
+      <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?visit={{visit.id}}'>{% translate "Medir" %}</a>
     {% endif %}
-    <a class="btn btn-secondary" role="button" href='{% url "visits:list" %}'>Regresar</a>
+    <a class="btn btn-secondary" role="button" href='{% url "visits:list" %}'>{% translate "Regresar" %}</a>
 </div>
 {% endblock %}
