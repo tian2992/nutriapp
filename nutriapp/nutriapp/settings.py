@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env
@@ -61,6 +62,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -114,13 +116,21 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
-LANGUAGE_CODE = 'es-gt'
+LANGUAGE_CODE = 'es'
+LANGUAGES = [('es', 'Español')]
+LANGUAGE_COOKIE_NAME = 'django_language'
 
 TIME_ZONE = 'America/Guatemala'   ##  TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
 USE_TZ = True
+
+# Local files for translations
+LOCALE_PATHS = [
+    BASE_DIR / "anthrocalc" / "locale",
+    BASE_DIR / "locale",
+]
 
 
 # Static files (CSS, JavaScript, Images)
