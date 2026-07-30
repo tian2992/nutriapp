@@ -1,0 +1,26 @@
+{% extends 'anthrocalc/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h4 mb-3">{% translate "Iniciar sesión" %}</h2>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label" for="id_username">{% translate "Usuario" %}</label>
+            <input class="form-control" type="text" name="username" id="id_username" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_password">{% translate "Contraseña" %}</label>
+            <input class="form-control" type="password" name="password" id="id_password" required>
+          </div>
+          <button class="btn btn-primary" type="submit">{% translate "Entrar" %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

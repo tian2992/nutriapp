@@ -1,0 +1,18 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+<div id="content-main">
+  <div class="module">
+    <table>
+      <caption>Resumen rápido</caption>
+      <tbody>
+        <tr>
+          <th><a href="{% url 'admin:anthrocalc_family_access_summary' %}">Resumen de acceso por familia</a></th>
+          <td>Revisa qué usuarios pueden ver cada familia.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {{ block.super }}
+</div>
+{% endblock %}

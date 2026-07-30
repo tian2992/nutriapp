@@ -1,14 +1,16 @@
 import csv
 
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models.manager import BaseManager
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.template import context
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
-from .forms import MetricForm, PatientForm
+from .forms import HouseholdStatusForm, MetricForm, PatientForm, VisitForm
 from .models import *
 from .person_utils import (
     calculate_age_at_date,
@@ -17,7 +19,73 @@ from .person_utils import (
 )
 
 
-class ExportableListView(ListView):
+class FamilyAccessMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if not user.is_authenticated:
+            return queryset.none()
+        if user.is_superuser or user.is_staff:
+            return queryset
+
+        if queryset.model is Family:
+            return queryset.filter(allowed_users=user)
+        if queryset.model is Patient:
+            return queryset.filter(family__allowed_users=user)
+        if queryset.model is Visit:
+            return queryset.filter(patient__family__allowed_users=user)
+        if queryset.model is Metric:
+            return queryset.filter(visit__patient__family__allowed_users=user)
+        if queryset.model is HouseholdStatus:
+            return queryset.filter(family__allowed_users=user)
+        if queryset.model is EnvironmentMetric:
+            return queryset.filter(visit__patient__family__allowed_users=user)
+        return queryset
+
+    def get_object(self, queryset=None):
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        try:
+            return queryset.get(pk=pk)
+        except queryset.model.DoesNotExist:
+            try:
+                existing_obj = self.model.objects.get(pk=pk)
+            except self.model.DoesNotExist as exc:
+                raise Http404 from exc
+            if self.can_access_object(existing_obj):
+                raise Http404
+            raise PermissionDenied
+
+    def can_access_object(self, obj):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return True
+        if isinstance(obj, Family):
+            return obj.allowed_users.filter(pk=user.pk).exists()
+        if isinstance(obj, Patient):
+            return bool(obj.family and obj.family.allowed_users.filter(pk=user.pk).exists())
+        if isinstance(obj, Visit):
+            return bool(obj.patient and obj.patient.family and obj.patient.family.allowed_users.filter(pk=user.pk).exists())
+        if isinstance(obj, Metric):
+            return bool(
+                obj.visit
+                and obj.visit.patient
+                and obj.visit.patient.family
+                and obj.visit.patient.family.allowed_users.filter(pk=user.pk).exists()
+            )
+        if isinstance(obj, HouseholdStatus):
+            return obj.family.allowed_users.filter(pk=user.pk).exists()
+        return False
+
+
+class ExportableListView(FamilyAccessMixin, LoginRequiredMixin, ListView):
     template_name = "anthrocalc/generic_list.html"
     table_fields = []  # List of (field_name, label) tuples
     title = ""
@@ -80,7 +148,7 @@ class PatientList(ExportableListView):
     edit_url_name = "patients:edit"
 
 
-class PatientDetail(DetailView):
+class PatientDetail(FamilyAccessMixin, LoginRequiredMixin, DetailView):
     model = Patient
 
     def get_context_data(self, **kwargs):
@@ -100,19 +168,29 @@ class PatientDetail(DetailView):
         return context
 
 
-class PatientCreation(CreateView):
+class PatientCreation(FamilyAccessMixin, LoginRequiredMixin, CreateView):
     model = Patient
     form_class = PatientForm
     success_url = reverse_lazy("patients:list")
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
-class PatientUpdate(UpdateView):
+
+class PatientUpdate(FamilyAccessMixin, LoginRequiredMixin, UpdateView):
     model = Patient
     form_class = PatientForm
     success_url = reverse_lazy("patients:list")
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
-class PatientDelete(DeleteView):
+
+class PatientDelete(FamilyAccessMixin, LoginRequiredMixin, DeleteView):
     model = Patient
     success_url = reverse_lazy("patients:list")
 
@@ -135,7 +213,7 @@ class VisitList(ExportableListView):
     ordering = ["-date"]
 
 
-class VisitDetail(DetailView):
+class VisitDetail(FamilyAccessMixin, LoginRequiredMixin, DetailView):
     model = Visit
 
     def get_context_data(self, **kwargs):
@@ -149,14 +227,19 @@ class VisitDetail(DetailView):
         return context
 
 
-class VisitCreation(CreateView):
+class VisitCreation(FamilyAccessMixin, LoginRequiredMixin, CreateView):
     model = Visit
     metric = Metric
     success_url = reverse_lazy("visits:list")  ## TODO: redirect to new metric
     # success_url = reverse_lazy('metrics:newvm')
     # +"?visit={{visit.id}}"
     # ", args=metric.id)
-    fields = "__all__"
+    form_class = VisitForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_success_url(self):
         return reverse("visits:detail", args=(self.object.id,))
@@ -168,13 +251,18 @@ class VisitCreation(CreateView):
         return initial
 
 
-class VisitUpdate(UpdateView):
+class VisitUpdate(FamilyAccessMixin, LoginRequiredMixin, UpdateView):
     model = Visit
     success_url = reverse_lazy("visits:list")
-    fields = ["patient", "date"]
+    form_class = VisitForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
 
-class VisitDelete(DeleteView):
+class VisitDelete(FamilyAccessMixin, LoginRequiredMixin, DeleteView):
     model = Visit
     success_url = reverse_lazy("visits:list")
 
@@ -197,13 +285,18 @@ class MetricList(ExportableListView):
     edit_url_name = "metrics:edit"
 
 
-class MetricDetail(DetailView):
+class MetricDetail(FamilyAccessMixin, LoginRequiredMixin, DetailView):
     model = Metric
 
 
-class MetricCreation(CreateView):
+class MetricCreation(FamilyAccessMixin, LoginRequiredMixin, CreateView):
     model = Metric
     form_class = MetricForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -241,20 +334,25 @@ class MetricCreation(CreateView):
     # fields = ['visit.patient', 'weight', 'height']
 
 
-class MetricUpdate(UpdateView):
+class MetricUpdate(FamilyAccessMixin, LoginRequiredMixin, UpdateView):
     model = Metric
     form_class = MetricForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_success_url(self):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
-class MetricDelete(DeleteView):
+class MetricDelete(FamilyAccessMixin, LoginRequiredMixin, DeleteView):
     model = Metric
     success_url = reverse_lazy("metrics:list")
 
 
-class EnvironmentMetricCreation(CreateView):
+class EnvironmentMetricCreation(FamilyAccessMixin, LoginRequiredMixin, CreateView):
     model = EnvironmentMetric
     fields = [
         "visit",
@@ -276,7 +374,7 @@ class EnvironmentMetricCreation(CreateView):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
-class EnvironmentMetricUpdate(UpdateView):
+class EnvironmentMetricUpdate(FamilyAccessMixin, LoginRequiredMixin, UpdateView):
     model = EnvironmentMetric
     fields = [
         "dietary_diversity_score",
@@ -291,17 +389,9 @@ class EnvironmentMetricUpdate(UpdateView):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
-class HouseholdStatusCreation(CreateView):
+class HouseholdStatusCreation(FamilyAccessMixin, LoginRequiredMixin, CreateView):
     model = HouseholdStatus
-    fields = [
-        "family",
-        "water_source",
-        "sanitation_type",
-        "floor_material",
-        "wall_material",
-        "roof_material",
-        "household_income_proxy",
-    ]
+    form_class = HouseholdStatusForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -313,6 +403,11 @@ class HouseholdStatusCreation(CreateView):
             except (Family.DoesNotExist, ValueError):
                 pass
         return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_initial(self):
         initial = super().get_initial()
@@ -328,21 +423,19 @@ class HouseholdStatusCreation(CreateView):
         return reverse("patients:list")
 
 
-class HouseholdStatusUpdate(UpdateView):
+class HouseholdStatusUpdate(FamilyAccessMixin, LoginRequiredMixin, UpdateView):
     model = HouseholdStatus
-    fields = [
-        "water_source",
-        "sanitation_type",
-        "floor_material",
-        "wall_material",
-        "roof_material",
-        "household_income_proxy",
-    ]
+    form_class = HouseholdStatusForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["family"] = self.object.family
         return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_success_url(self):
         if "next" in self.request.GET:

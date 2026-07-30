@@ -1,12 +1,19 @@
+from django.conf import settings
 from django.db import models
-from django.utils.timezone import now
 from django.urls import reverse
+from django.utils.timezone import now
 
 # Create your models here.
 
 
 class Family(models.Model):
     responsible_name = models.TextField(null=False)
+    allowed_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="accessible_families",
+        verbose_name="Usuarios con acceso",
+    )
 
     def __str__(self):
         return self.responsible_name

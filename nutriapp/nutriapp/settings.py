@@ -119,6 +119,10 @@ LANGUAGE_CODE = "es"
 LANGUAGES = [("es", "Español")]
 LANGUAGE_COOKIE_NAME = "django_language"
 
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/patient/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
 TIME_ZONE = "America/Guatemala"  ##  TIME_ZONE = 'UTC'
 
 USE_I18N = True
