@@ -139,6 +139,8 @@ class Patient(models.Model):
     )
     risk_score = models.FloatField(null=True, blank=True, verbose_name="Puntaje de riesgo")
 
+    notes = models.TextField(null=True, blank=True, verbose_name="Notas")
+
     def get_absolute_url(self):
         return reverse("patients:detail", args=[str(self.id)])
 
@@ -207,6 +209,7 @@ class Metric(models.Model):
     wfaz = models.FloatField(null=True, blank=True, verbose_name="WAZ (Peso para la Edad)")
     hfaz = models.FloatField(null=True, blank=True, verbose_name="HAZ (Talla para la Edad)")
     wfhz = models.FloatField(null=True, blank=True, verbose_name="WHZ (Peso para la Talla)")
+    bmi_age = models.FloatField(null=True, blank=True, verbose_name="BMI-AGE (Indice de Masa Corporal)")
 
     visit = models.OneToOneField(
         Visit, on_delete=models.CASCADE, verbose_name="Visita"
