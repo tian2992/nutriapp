@@ -3,7 +3,12 @@ from django.db import models
 from django.urls import reverse
 from django.utils.timezone import now
 
-# Create your models here.
+# Models for nutriapp.
+# Aims to model the needs of organizations figthing malnutrition.
+# Describes models of families, kids(patients), nutritional support, enviromental conditions, and health conditions.
+# Visits are records of interactions between families and healthcare providers.
+# Metric is a measurement of a child's anthropometric data and calculated z values, as well as warning signs.
+
 
 
 class Family(models.Model):
