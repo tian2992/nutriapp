@@ -125,14 +125,14 @@ original_get_urls = admin.site.get_urls
 
 def get_admin_urls():
     urls = original_get_urls()
-    return [
-        *urls,
+    custom_urls = [
         path(
             "anthrocalc/family-access-summary/",
             admin.site.admin_view(family_access_summary),
             name="anthrocalc_family_access_summary",
         ),
     ]
+    return custom_urls + urls
 
 
 admin.site.get_urls = get_admin_urls
