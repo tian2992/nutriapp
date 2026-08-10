@@ -1,27 +1,57 @@
-FROM python:latest
+# Stage 1: Builder
+FROM python:3.13-slim AS builder
+
+# git is required for pygrowup2 (git+https://github.com/jbaldivieso/pygrowup2.git)
+# build-essential is required for numpy/pandas/matplotlib C-extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
+  git-core \
+  libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Final
+FROM python:3.13-slim AS final
+
 LABEL authors="tian"
-EXPOSE 8000
-# No buffering, no .pyc
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
 
-# Stage 1 Update y Req
-#RUN apt-get update
-#RUN apt-get install -y libgdal-dev libpq-dev
+ENV PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONUNBUFFERED=1 \
+  PATH="/opt/venv/bin:$PATH" \
+  PYTHONPATH="/app"
 
+# Runtime dependencies:
+# - libpq5: Postgres client
+# - curl: Healthchecks
+# - libpng16-16 & libfreetype6: Required by Matplotlib for rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    libpng16-16 \
+    libfreetype6 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt /app/
-RUN python -m pip install -r requirements.txt
+RUN adduser -u 1000 --disabled-password --gecos "" appuser
 
-# Stage 2
+COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
+# Copying the contents of the nutriapp folder so manage.py is in /app
+COPY --chown=appuser:appuser nutriapp /app
 
-COPY nutriapp /app
-
-# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-RUN adduser -u 1000 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
-# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "nutriapp.wsgi"]
+EXPOSE 8000
+
+# Health check (assuming admin is enabled in urls.py)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/admin/ || exit 1
+
+# Gunicorn setup for nutriapp project structure
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "nutriapp.wsgi:application"]
