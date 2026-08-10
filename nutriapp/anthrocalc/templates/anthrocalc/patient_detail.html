@@ -1,30 +1,96 @@
 {% extends 'anthrocalc/base.html' %}
 {% load static %}
+{% load utils %}
+{% load i18n %}
 
 {% block content %}
-<h1>Información de: {{ patient.name }}</h1>
-<p>Fecha de nacimiento: <i>{{ patient.dob }}</i></p>
+<h1>{% translate "Información de:" %} {{ patient.name }}</h1>
+<div class="patient-info card-body">
+    <dl class='row'>
+        <dt class="col-sm-2 text-md-right">{% translate "Sexo:" %}</dt>
+        <dd class="col-sm-10"><i>{{ patient.gender }}</i></dd>
+        <dt class="col-sm-2 text-md-right">{% translate "Fecha de nacimiento:" %}</dt>
+        <dd class="col-sm-10"><i>{{ patient.dob }}</i></dd>
+    </dl>
+</div>
+
 <!-- TODO: agregar info de madre -->
 
-<h2>Visitas y Medidas</h2>
-<ol>
-{% for id, metrical in metrics_dict.items %}
-  <li><a href={% url 'visits:detail' id %}>{{ metrical.date }}</a>
-    {% if metrical.metrics %} <br/>
-    Peso: {{metrical.metrics.weight}} - Talla: {{metrical.metrics.height}}
-    {% endif %}
-  </li>
-  {{metric}}
-{% endfor %}
-</ol>
+<h2>{% translate "Visitas y Medidas" %}</h2>
+{% if visits_metrics %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>{% translate "Visita" %}</th>
+      <th>{% translate "Edad" %}</th>
+      <th>{% translate "Peso (kg)" %}</th>
+      <th>{% translate "Talla (cm)" %}</th>
+      <th>{% translate "Peso (lb)" %}</th>
+      <th>WFAZ</th>
+      <th>WHZ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in visits_metrics %}
+    <tr>
+      <td><a href="{% url 'visits:detail' item.visit.id %}">{{ item.visit.date|date:"Y-m-d H:i" }}</a></td>
+      <td>
+        {% if item.age_days is not None and item.age_months is not None %}
+          {{ item.age_days|floatformat:"0" }}d / {{ item.age_months|floatformat:"0" }}m
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.metric %}
+          {{ item.metric.weight|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.metric %}
+          {{ item.metric.height|floatformat:1 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.metric %}
+          {{ item.metric.weight|kg_to_lb:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.metric and item.metric.wfaz is not None %}
+          {{ item.metric.wfaz|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.metric and item.metric.wfhz is not None %}
+          {{ item.metric.wfhz|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>{% translate "No hay visitas registradas aún." %}</p>
+{% endif %}
 
-<a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>Editar información.</a>
-<a class="btn btn-danger" role="button" href='{% url "patients:delete" patient.id %}'>Borrar niño</a>
+<a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>{% translate "Editar información." %}</a>
+<a class="btn btn-danger" role="button" href='{% url "patients:delete" patient.id %}'>{% translate "Borrar niño" %}</a>
 <hr />
 <p>
-    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'><img src="{% static '/icons/svg/plus.svg' %}">Agregar visita al paciente</a>
-    <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?patient={{ patient.id }}'><img src="{% static '/icons/svg/plus.svg' %}">Agregar medición directa</a>
+    <a class="btn btn-primary" role="button" href='{% url "visits:new" %}?patient={{ patient.id }}'> ➕ 📋 {% translate "Agregar visita al paciente" %}</a>
+    <a class="btn btn-success" role="button" href='{% url "metrics:new" %}?patient={{ patient.id }}'> ➕ 📊 {% translate "Agregar medición directa" %}</a>
 
-    <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>Regresar</a>
+    <a class="btn btn-secondary" role="button" href='{% url "patients:list" %}'>{% translate "Regresar" %}</a>
 </p>
 {% endblock %}
