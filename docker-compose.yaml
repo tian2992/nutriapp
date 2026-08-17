@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # - DATABASE_URL=postgres://nutriuser:nutripass@db:5432/nutridb
+      - SECRET_KEY=your-secret-key
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+    volumes:
+      - nutriapp_data:/app/data
+    # depends_on:
+    #   - db
+
+  db:
+   image: postgres:16-alpine
+   environment:
+     POSTGRES_DB: nutridb
+     POSTGRES_USER: nutriuser
+     POSTGRES_PASSWORD: nutripass
+   volumes:
+     - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  nutriapp_data:
+  # postgres_data:
