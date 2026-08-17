@@ -101,3 +101,10 @@ class MetricCreationTests(TestCase):
         self.assertFormError(
             response.context["form"], None, "Debe seleccionar una visita existente o un paciente para crear una nueva visita."
         )
+
+
+class CsrfSettingsTests(TestCase):
+    def test_csrf_trusted_origins_is_configured(self):
+        from django.conf import settings
+        self.assertTrue(hasattr(settings, "CSRF_TRUSTED_ORIGINS"))
+        self.assertIsInstance(settings.CSRF_TRUSTED_ORIGINS, list)
