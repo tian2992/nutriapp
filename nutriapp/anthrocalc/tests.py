@@ -22,6 +22,29 @@ class ListTemplateTests(TestCase):
         self.assertIn("anthrocalc/metric_list.html", [template.name for template in response.templates])
 
 
+class LandingPageTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def test_landing_page_status_and_template(self):
+        response = self.client.get(reverse("antrobase:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("anthrocalc/landing.html", [template.name for template in response.templates])
+
+    def test_landing_page_root_url(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("anthrocalc/landing.html", [template.name for template in response.templates])
+
+    def test_landing_page_contains_admin_link(self):
+        response = self.client.get(reverse("antrobase:home"))
+        self.assertContains(response, reverse("admin:index"))
+
+    def test_landing_page_contains_general_info(self):
+        response = self.client.get(reverse("antrobase:home"))
+        self.assertContains(response, "Nutriacción")
+        self.assertContains(response, "Qachuu Aloom")
+
 class MetricCreationTests(TestCase):
     def setUp(self):
         self.family = Family.objects.create(responsible_name="Test Family")
