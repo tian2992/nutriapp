@@ -29,9 +29,9 @@
           This directory must be located at: "{{ project_dir }}/certs/"
           Ensure the files are correctly placed before continuing.
 
-    - name: Pause execution for the user to upload SSL certificates
-      pause:
-        prompt: "Hit 'Enter' once you have uploaded the SSL certificates to '{{ project_dir }}/certs/' and verified their placement."
+#    - name: Pause execution for the user to upload SSL certificates
+#      pause:
+#        prompt: "Hit 'Enter' once you have uploaded the SSL certificates to '{{ project_dir }}/certs/' and verified their placement."
 
     - name: Verify that the SSL certificate files exist
       stat:
