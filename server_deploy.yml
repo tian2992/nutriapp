@@ -6,8 +6,8 @@
     repo_url: "https://github.com/tian2992/nutriapp.git"
     git_version: "master"
     project_dir: "/opt/nutriapp"
-    domain_name: "qachuu.aisockets.net,app.nutriaccion.xyz,localhost,127.0.0.1"
-    csrf_trusted_origins: "https://qachuu.aisockets.net, https://app.nutriaccion.xyz, http://web:8000"
+    domain_name: "nutriaccion.aisockets.net,app.nutriaccion.xyz,localhost,127.0.0.1"
+    csrf_trusted_origins: "https://nutriaccion.aisockets.net, https://app.nutriaccion.xyz, http://web:8000"
 
   tasks:
     # Application setup and deployment tasks
