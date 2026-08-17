@@ -7,13 +7,14 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      # - DATABASE_URL=postgres://nutriuser:nutripass@db:5432/nutridb
-      - SECRET_KEY=your-secret-key
-      - DEBUG=False
-      - ALLOWED_HOSTS=localhost,127.0.0.1
+#    environment:
+#      - DATABASE_URL=postgres://nutriuser:nutripass@db:5432/nutridb
+#      - SECRET_KEY=your-secret-key
+#      - DEBUG=False
+#      - ALLOWED_HOSTS=localhost,127.0.0.1
     volumes:
-      - nutriapp_data:/app/data
+      - ./static:/app/static
+      - ./media:/app/media
     depends_on:
      - db
 
@@ -25,5 +26,4 @@ services:
      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  nutriapp_data:
   postgres_data:

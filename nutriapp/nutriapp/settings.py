@@ -140,8 +140,8 @@ LOCALE_PATHS = [
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 
-STATIC_ROOT = BASE_DIR.parent / "static"
-MEDIA_ROOT = BASE_DIR.parent / "media"
+STATIC_ROOT = Path(os.getenv("STATIC_ROOT", BASE_DIR / "static"))
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

@@ -151,14 +151,14 @@
       tags:
         - app_setup
 
-    - name: Copy nginx.conf
-      copy:
-        src: "{{ project_dir }}/nginx.conf"
-        dest: "{{ project_dir }}/nginx.conf"
-        remote_src: yes
-      ignore_errors: yes
-      tags:
-        - app_setup
+#    - name: Copy nginx.conf
+#      copy:
+#        src: "{{ project_dir }}/nginx.conf"
+#        dest: "{{ project_dir }}/nginx.conf"
+#        remote_src: yes
+#      ignore_errors: yes
+#      tags:
+#        - app_setup
 
     - name: Ensure log directory exists for nginx (pre-create BEFORE compose up)
       file:

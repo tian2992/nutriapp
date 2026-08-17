@@ -41,6 +41,8 @@ WORKDIR /app
 
 RUN adduser -u 1000 --disabled-password --gecos "" appuser
 
+RUN mkdir -p /app/static /app/media && chown -R appuser:appuser /app/static /app/media
+
 COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
 # Copying the contents of the nutriapp folder so manage.py is in /app
 COPY --chown=appuser:appuser nutriapp /app
