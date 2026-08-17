@@ -76,5 +76,5 @@ class MetricCreationTests(TestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)  # Form re-rendered with errors
         self.assertFormError(
-            response, "form", None, "Debe seleccionar una visita existente o un paciente para crear una nueva visita."
+            response.context["form"], None, "Debe seleccionar una visita existente o un paciente para crear una nueva visita."
         )
