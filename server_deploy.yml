@@ -1,0 +1,249 @@
+- name: Setup Django app with Docker Compose
+  hosts: all
+  become: yes
+
+  vars:
+    repo_url: "https://github.com/tian2992/nutriapp.git"
+    git_version: "master"
+    project_dir: "/opt/nutriapp"
+    domain_name: "qachuu.aisockets.net,app.nutriaccion.xyz,localhost,127.0.0.1"
+    csrf_trusted_origins: "https://qachuu.aisockets.net, https://app.nutriaccion.xyz, http://web:8000"
+
+  tasks:
+    # Application setup and deployment tasks
+    - name: Clone Git repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_dir }}"
+        version: "{{ git_version }}"
+        force: yes
+      tags:
+        - app_setup
+
+    - name: Warn the user to upload SSL certificates
+      debug:
+        msg: |
+          Please upload the SSL certificate files to the "certs" directory:
+          - fullchain.crt
+          - private.key
+          This directory must be located at: "{{ project_dir }}/certs/"
+          Ensure the files are correctly placed before continuing.
+
+    - name: Pause execution for the user to upload SSL certificates
+      pause:
+        prompt: "Hit 'Enter' once you have uploaded the SSL certificates to '{{ project_dir }}/certs/' and verified their placement."
+
+    - name: Verify that the SSL certificate files exist
+      stat:
+        path: "{{ project_dir }}/certs/fullchain.crt"
+      register: crt_file
+
+    - name: Verify that the SSL key file exists
+      stat:
+        path: "{{ project_dir }}/certs/private.key"
+      register: key_file
+
+    - name: Fail if certificate files are not found
+      fail:
+        msg: "The required SSL files (fullchain.crt or private.key) are missing from '{{ project_dir }}/certs/'. Please upload them and re-run the playbook."
+      when:
+        - crt_file.stat.exists == False or key_file.stat.exists == False
+
+
+    - name: Check if the .production_secret_key file exists
+      stat:
+        path: "{{ project_dir }}/.production_secret_key"
+      register: secret_key_file
+
+    - name: Generate a persistent SECRET_KEY
+      command: openssl rand -base64 48
+      register: secret_key_output
+      when: secret_key_file.stat.exists == False
+
+    - name: Persist SECRET_KEY to host for reuse
+      copy:
+        content: "{{ secret_key_output.stdout }}"
+        dest: "{{ project_dir }}/.production_secret_key"
+        mode: '0600'
+      when: secret_key_file.stat.exists == False
+
+    - name: Set secret_key_fact after generation
+      set_fact:
+        secret_key_fact: "{{ secret_key_output.stdout }}"
+      when: secret_key_file.stat.exists == False
+
+    - name: Read existing SECRET_KEY
+      slurp:
+        src: "{{ project_dir }}/.production_secret_key"
+      register: existing_secret_key
+      when: secret_key_file.stat.exists
+
+    - name: Set secret_key_fact after reading
+      set_fact:
+        secret_key_fact: "{{ existing_secret_key.content | b64decode | trim }}"
+      when: secret_key_file.stat.exists
+
+    - name: Check if .env file exists
+      stat:
+        path: "{{ project_dir }}/.env"
+      register: env_file
+
+    - name: Create database credentials only if not already persisted
+      block:
+        - name: Generate POSTGRES_PASSWORD
+          command: openssl rand -hex 16
+          register: postgres_password
+
+        - name: Persist POSTGRES_PASSWORD
+          copy:
+            content: "{{ postgres_password.stdout }}"
+            dest: "{{ project_dir }}/.postgres_password"
+            mode: '0600'
+
+        - name: Set postgres_password_fact after generation
+          set_fact:
+            postgres_password_fact: "{{ postgres_password.stdout }}"
+      when: env_file.stat.exists == False
+
+    - name: Read existing POSTGRES_PASSWORD
+      slurp:
+        src: "{{ project_dir }}/.postgres_password"
+      register: existing_postgres_password
+      when: env_file.stat.exists
+
+    - name: Set postgres_password_fact after reading
+      set_fact:
+        postgres_password_fact: "{{ existing_postgres_password.content | b64decode | trim }}"
+      when: env_file.stat.exists
+
+    - name: Create .env file for production
+      copy:
+        dest: "{{ project_dir }}/.env"
+        content: |
+          # Django settings
+          SECRET_KEY={{ secret_key_fact }}
+          DEBUG=False
+          ALLOWED_HOSTS={{ domain_name }}
+          DATABASE_URL=postgres://nutriuser:{{ postgres_password_fact }}@db:5432/nutridb
+
+          # Database settings
+          POSTGRES_DB=nutridb
+          POSTGRES_USER=nutriuser
+          POSTGRES_PASSWORD={{ postgres_password_fact }}
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+
+          # Static and media settings
+          STATIC_ROOT=/app/static
+          MEDIA_ROOT=/app/media
+
+          # CSRF trusted origins
+          CSRF_TRUSTED_ORIGINS={{ csrf_trusted_origins }}
+        mode: '0600'
+      tags:
+        - app_setup
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ project_dir }}/docker-compose.yaml"
+        dest: "{{ project_dir }}/docker-compose.yaml"
+        remote_src: yes
+      tags:
+        - app_setup
+
+    - name: Copy nginx.conf
+      copy:
+        src: "{{ project_dir }}/nginx.conf"
+        dest: "{{ project_dir }}/nginx.conf"
+        remote_src: yes
+      ignore_errors: yes
+      tags:
+        - app_setup
+
+    - name: Ensure log directory exists for nginx (pre-create BEFORE compose up)
+      file:
+        path: "{{ project_dir }}/logs/nginx"
+        state: directory
+        owner: 101
+        group: 101
+        mode: '0777'
+        recurse: yes
+      tags:
+        - app_setup
+
+    - name: Pre-create nginx log files owned by nginx UID (101)
+      file:
+        path: "{{ project_dir }}/logs/nginx/{{ item }}"
+        state: touch
+        owner: 101
+        group: 101
+        mode: '0666'
+      loop:
+        - access.log
+        - error.log
+      tags:
+        - app_setup
+
+    - name: Start Docker Compose stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        build: always
+        state: present
+      tags:
+        - app_setup
+
+    - name: Ensure staticfiles and media directories exist
+      file:
+        path: "{{ project_dir }}/{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0755'
+      loop:
+        - static
+        - media
+      tags:
+        - app_setup
+
+    - name: Ensure staticfiles and media directories are owned by UID 1000
+      file:
+        path: "{{ project_dir }}/{{ item }}"
+        owner: 1000
+        group: 1000
+        recurse: yes
+      loop:
+        - static
+        - media
+      tags:
+        - app_setup
+
+    - name: Ensure migrations directory is owned by UID 1000
+      file:
+        path: "{{ project_dir }}/nutriapp/anthrocalc/migrations"
+        owner: 1000
+        group: 1000
+        recurse: yes
+      tags:
+        - app_setup
+
+    # Django initialization tasks
+    - name: Collect static files for the web app
+      command: docker compose -f {{ project_dir }}/docker-compose.yaml run --rm web python manage.py collectstatic --noinput
+      args:
+        chdir: "{{ project_dir }}"
+      tags:
+        - django_setup
+
+    - name: Run Django makemigrations
+      command: docker compose -f {{ project_dir }}/docker-compose.yaml run --rm web python manage.py makemigrations
+      args:
+        chdir: "{{ project_dir }}"
+      tags:
+        - django_setup
+
+    - name: Run Django migrations
+      command: docker compose -f {{ project_dir }}/docker-compose.yaml run --rm web python manage.py migrate
+      args:
+        chdir: "{{ project_dir }}"
+      tags:
+        - django_setup

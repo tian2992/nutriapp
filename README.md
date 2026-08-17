@@ -54,7 +54,9 @@ docker run -d \
 
 ### Docker Compose + Ansible
 
-La opción más sencilla. Básate en el Docker Compose o el adjunto. Validá él .env generado por Ansible.
+La opción más sencilla. Básate en el Docker Compose o el adjunto.
+Configura tu hosts file y correlo con ```ansible-playbook -i hosts server_deploy.yml```
+Validá él .env generado por Ansible.
 
 ## Licencia
 

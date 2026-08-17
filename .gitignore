@@ -2,3 +2,5 @@ venv/
 *.pyc
 
 .idea/
+/nutriapp/anthrocalc/migrations/*
+/nutriapp/db.sqlite3
