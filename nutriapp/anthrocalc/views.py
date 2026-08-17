@@ -1,9 +1,10 @@
 import csv
-
+from django.contrib.auth.decorators import login_required
 from django.db.models.manager import BaseManager
 from django.http import HttpResponse
 from django.template import context
 from django.urls import reverse, reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views.generic import ListView, TemplateView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
@@ -17,6 +18,7 @@ from .person_utils import (
 )
 
 
+@method_decorator(login_required, name="dispatch")
 class ExportableListView(ListView):
     template_name = "anthrocalc/generic_list.html"
     table_fields = []  # List of (field_name, label) tuples
@@ -80,6 +82,7 @@ class PatientList(ExportableListView):
     edit_url_name = "patients:edit"
 
 
+@method_decorator(login_required, name="dispatch")
 class PatientDetail(DetailView):
     model = Patient
 
@@ -135,6 +138,7 @@ class VisitList(ExportableListView):
     ordering = ["-date"]
 
 
+@method_decorator(login_required, name="dispatch")
 class VisitDetail(DetailView):
     model = Visit
 
@@ -197,7 +201,9 @@ class MetricList(ExportableListView):
     edit_url_name = "metrics:edit"
 
 
+@method_decorator(login_required, name="dispatch")
 class MetricDetail(DetailView):
+    model = Metric
     model = Metric
 
 

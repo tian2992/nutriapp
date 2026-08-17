@@ -133,6 +133,9 @@ LOCALE_PATHS = [
     BASE_DIR / "locale",
 ]
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_URL = "/admin/login/"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
