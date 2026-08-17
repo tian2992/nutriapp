@@ -4,7 +4,7 @@ from django.db.models.manager import BaseManager
 from django.http import HttpResponse
 from django.template import context
 from django.urls import reverse, reverse_lazy
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
@@ -348,3 +348,15 @@ class HouseholdStatusUpdate(UpdateView):
         if "next" in self.request.GET:
             return self.request.GET["next"]
         return reverse("patients:list")
+
+
+class LandingPageView(TemplateView):
+    template_name = "anthrocalc/landing.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["contact_email"] = "code@sebastianoliva.com"
+        context["patient_count"] = Patient.objects.count()
+        context["visit_count"] = Visit.objects.count()
+        context["metric_count"] = Metric.objects.count()
+        return context
