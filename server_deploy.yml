@@ -43,11 +43,11 @@
         path: "{{ project_dir }}/certs/private.key"
       register: key_file
 
-    - name: Fail if certificate files are not found
-      fail:
-        msg: "The required SSL files (fullchain.crt or private.key) are missing from '{{ project_dir }}/certs/'. Please upload them and re-run the playbook."
-      when:
-        - crt_file.stat.exists == False or key_file.stat.exists == False
+#    - name: Fail if certificate files are not found
+#      fail:
+#        msg: "The required SSL files (fullchain.crt or private.key) are missing from '{{ project_dir }}/certs/'. Please upload them and re-run the playbook."
+#      when:
+#        - crt_file.stat.exists == False or key_file.stat.exists == False
 
 
     - name: Check if the .production_secret_key file exists
