@@ -15,6 +15,7 @@
             </h1>
             <nav class="nav justify-content-end">
               <a class="nav-link" href='{% url "antrobase:home" %}'>{% translate "Inicio" %}</a>
+              <a class="nav-link" href='{% url "communities:list" %}'>{% translate "Comunidades" %}</a>
               <a class="nav-link" href='{% url "patients:list" %}'>{% translate "Listado de Niños" %}</a>
               <a class="nav-link" href='{% url "visits:list" %}'>{% translate "Listado de Visitas" %}</a>
               <a class="nav-link" href='{% url "metrics:list" %}'>{% translate "Listado de Métricas" %}</a>
@@ -23,6 +24,13 @@
           </div>
         </div>
         <div class="content container py-3">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
           {% block content %}
           {% endblock %}
         </div>

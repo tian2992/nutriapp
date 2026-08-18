@@ -1,0 +1,226 @@
+{% extends 'anthrocalc/base.html' %}
+{% load i18n %}
+
+{% block title %}{{ object.name }} - {% translate "Listado y Planilla de Campo" %}{% endblock %}
+
+{% block content %}
+<style>
+@media print {
+    .no-print, nav, footer, .btn, .d-print-none {
+        display: none !important;
+    }
+    body {
+        font-size: 11pt;
+        color: #000;
+        background: #fff;
+    }
+    .container, .content {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .table-print {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    .table-print th, .table-print td {
+        border: 1px solid #000 !important;
+        padding: 4px 6px !important;
+        font-size: 9pt;
+    }
+    .print-only {
+        display: table-cell !important;
+    }
+    .print-header {
+        display: block !important;
+        margin-bottom: 15px;
+    }
+}
+@media screen {
+    .print-only, .print-header {
+        display: none;
+    }
+}
+.badge-status {
+    font-size: 0.8rem;
+    padding: 0.35em 0.55em;
+}
+</style>
+
+<!-- Print-Only Header -->
+<div class="print-header">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+        <div>
+            <h2 class="mb-0">{% translate "Planilla de Campo / Jornada de Medición" %}</h2>
+            <h4 class="text-muted mb-0">{{ object.name }} ({{ object.municipality }}, {{ object.department }})</h4>
+        </div>
+        <div class="text-end">
+            <p class="mb-0"><strong>{% translate "Fecha:" %}</strong> __________________</p>
+            <p class="mb-0"><strong>{% translate "Encargado:" %}</strong> {{ object.contact_person|default:"__________________" }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Screen Header & Summary -->
+<div class="d-print-none mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h1 class="h2 mb-0">{{ object.name }}</h1>
+                <span class="badge bg-secondary">{{ object.municipality }}, {{ object.department }}</span>
+            </div>
+            <p class="text-muted mb-0 mt-1">
+                {% if object.contact_person %}
+                    <strong>{% translate "Líder / Promotor encargado:" %}</strong> {{ object.contact_person }} &middot;
+                {% endif %}
+                <strong>{% translate "Total Niños:" %}</strong> {{ total_children }} &middot;
+                <strong>{% translate "Última Medición:" %}</strong>
+                {% if last_measurement_date %}
+                    {{ last_measurement_date|date:"Y-m-d" }}
+                {% else %}
+                    <span class="text-muted">{% translate "Sin registros" %}</span>
+                {% endif %}
+            </p>
+            {% if object.notes %}
+                <p class="small text-muted mt-1 mb-0">{{ object.notes }}</p>
+            {% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'communities:mass_visit' object.id %}" class="btn btn-success">
+                <span class="fw-bold">＋</span> {% translate "Nueva Jornada de Medición" %}
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-dark">
+                {% translate "Imprimir Planilla de Campo" %}
+            </button>
+            <a href="?export=csv" class="btn btn-outline-secondary">
+                {% translate "Exportar CSV" %}
+            </a>
+            <a href="{% url 'patients:new' %}?community={{ object.id }}" class="btn btn-primary">
+                {% translate "Registrar Nuevo Niño" %}
+            </a>
+            <a href="{% url 'communities:edit' object.id %}" class="btn btn-outline-secondary">
+                {% translate "Editar" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Roster Table -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped table-hover table-sm align-middle table-print">
+        <thead class="table-light">
+            <tr>
+                <th>{% translate "Código" %}</th>
+                <th>{% translate "Nombre del Niño" %}</th>
+                <th>{% translate "Tutor / Madre" %}</th>
+                <th>{% translate "Fec. Nac. (Edad)" %}</th>
+                <th class="text-center">{% translate "Sexo" %}</th>
+                <th>{% translate "Medición Anterior" %}</th>
+                <th>{% translate "Última Medición" %}</th>
+                <th class="d-print-none">{% translate "Estado Nutricional" %}</th>
+                <!-- Fieldwork print columns -->
+                <th class="print-only" style="width: 70px;">{% translate "Peso (kg)" %}</th>
+                <th class="print-only" style="width: 70px;">{% translate "Talla (cm)" %}</th>
+                <th class="print-only" style="width: 60px;">{% translate "MUAC" %}</th>
+                <th class="print-only" style="width: 60px;">{% translate "Edema" %}</th>
+                <th class="print-only" style="width: 120px;">{% translate "Observaciones" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in roster %}
+            <tr>
+                <td class="fw-bold">
+                    <a href="{% url 'patients:detail' row.patient.id %}" class="d-print-none text-decoration-none">{{ row.patient.code }}</a>
+                    <span class="d-none d-print-inline">{{ row.patient.code }}</span>
+                </td>
+                <td>
+                    <a href="{% url 'patients:detail' row.patient.id %}" class="d-print-none fw-semibold text-dark text-decoration-none">{{ row.patient.name }}</a>
+                    <span class="d-none d-print-inline">{{ row.patient.name }}</span>
+                </td>
+                <td>
+                    {{ row.patient.mother_name|default:row.patient.family.responsible_name|default:"-" }}
+                </td>
+                <td>
+                    {{ row.patient.dob|date:"Y-m-d" }}
+                    {% if row.age_months is not None %}
+                        <small class="text-muted">({{ row.age_months }}m)</small>
+                    {% endif %}
+                </td>
+                <td class="text-center">{{ row.patient.gender }}</td>
+                <td>
+                    {% if row.prev_metric %}
+                        <small>
+                            <strong>{{ row.prev_visit.date|date:"Y-m-d" }}</strong>:
+                            {{ row.prev_metric.weight }}kg, {{ row.prev_metric.height }}cm
+                            {% if row.prev_metric.wfhz is not None or row.prev_metric.wfaz is not None or row.prev_metric.hfaz is not None %}
+                                <br><span class="text-muted">WHZ: {{ row.prev_metric.wfhz|floatformat:1|default:"-" }} | WAZ: {{ row.prev_metric.wfaz|floatformat:1|default:"-" }} | HAZ: {{ row.prev_metric.hfaz|floatformat:1|default:"-" }}</span>
+                            {% endif %}
+                        </small>
+                    {% else %}
+                        <span class="text-muted small">{% translate "Sin registro previo" %}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.latest_metric %}
+                        <small>
+                            <strong>{{ row.latest_visit.date|date:"Y-m-d" }}</strong>:
+                            {{ row.latest_metric.weight }}kg, {{ row.latest_metric.height }}cm
+                            {% if row.latest_metric.wfhz is not None or row.latest_metric.wfaz is not None or row.latest_metric.hfaz is not None %}
+                                <br><span class="text-muted">WHZ: {{ row.latest_metric.wfhz|floatformat:1|default:"-" }} | WAZ: {{ row.latest_metric.wfaz|floatformat:1|default:"-" }} | HAZ: {{ row.latest_metric.hfaz|floatformat:1|default:"-" }}</span>
+                            {% endif %}
+                        </small>
+                    {% else %}
+                        <span class="text-muted small">{% translate "Sin mediciones" %}</span>
+                    {% endif %}
+                </td>
+                <td class="d-print-none">
+                    {% for badge in row.status_info.badges %}
+                        <span class="badge bg-{{ badge.class }} badge-status">{{ badge.text }}</span>
+                    {% endfor %}
+                </td>
+                <!-- Blank printable cells -->
+                <td class="print-only"></td>
+                <td class="print-only"></td>
+                <td class="print-only"></td>
+                <td class="print-only"></td>
+                <td class="print-only"></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                    {% translate "No hay niños registrados en esta comunidad." %}
+                    <br>
+                    <a href="{% url 'patients:new' %}?community={{ object.id }}" class="btn btn-sm btn-primary mt-2">
+                        {% translate "Registrar primer niño" %}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- History of Jornadas / Multiple Visits (Screen only) -->
+{% if multiple_visits %}
+<div class="d-print-none mt-5">
+    <h3 class="h4 mb-3">{% translate "Historial de Jornadas en la Comunidad" %}</h3>
+    <div class="list-group">
+        {% for mv in multiple_visits %}
+        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1">{{ mv.date|date:"Y-m-d H:i" }} - {{ mv.responsible_name|default:"Sin encargado asignado" }}</h6>
+                {% if mv.notes %}
+                    <p class="mb-0 small text-muted">{{ mv.notes }}</p>
+                {% endif %}
+            </div>
+            <span class="badge bg-primary rounded-pill">
+                {{ mv.visit_set.count }} {% translate "visitas" %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
