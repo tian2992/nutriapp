@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from django.urls import reverse
@@ -5,8 +6,50 @@ from django.urls import reverse
 # Create your models here.
 
 
+class Community(models.Model):
+    """Represents a geographical community, village, or sector."""
+
+    name = models.CharField(max_length=200, verbose_name="Nombre de la comunidad")
+    municipality = models.CharField(
+        max_length=150, blank=True, default="Rabinal", verbose_name="Municipio"
+    )
+    department = models.CharField(
+        max_length=150, blank=True, default="Baja Verapaz", verbose_name="Departamento"
+    )
+    contact_person = models.CharField(
+        max_length=200, blank=True, verbose_name="Líder / Promotor encargado"
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name="Notas")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comunidad"
+        verbose_name_plural = "Comunidades"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.municipality})"
+
+    def get_absolute_url(self):
+        return reverse("communities:detail", args=[str(self.id)])
+
+
 class Family(models.Model):
     responsible_name = models.TextField(null=False)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="families",
+        verbose_name="Comunidad",
+    )
+    allowed_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="accessible_families",
+        verbose_name="Usuarios con acceso",
+    )
 
     def __str__(self):
         return self.responsible_name
@@ -134,6 +177,10 @@ class Patient(models.Model):
 
     notes = models.TextField(null=True, blank=True, verbose_name="Notas")
 
+    @property
+    def community(self):
+        return self.family.community if self.family else None
+
     def get_absolute_url(self):
         return reverse("patients:detail", args=[str(self.id)])
 
@@ -144,9 +191,27 @@ class Patient(models.Model):
 
 
 class MultipleVisit(models.Model):
-    """Models a visit to a community or group with multiple patients."""
+    """Represents a measurement round (jornada) in a specific community."""
 
-    date = models.DateTimeField(default=now)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name="multiple_visits",
+        verbose_name="Comunidad",
+    )
+    date = models.DateTimeField(default=now, verbose_name="Fecha de jornada")
+    responsible_name = models.CharField(
+        max_length=200, blank=True, verbose_name="Encargado de medición"
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name="Notas de la jornada")
+
+    class Meta:
+        verbose_name = "Jornada / Visita Masiva"
+        verbose_name_plural = "Jornadas / Visitas Masivas"
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"Jornada {self.community.name} - {self.date.strftime('%Y-%m-%d')}"
 
 
 # A point in time where metrics are taken
