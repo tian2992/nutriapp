@@ -24,7 +24,7 @@ services:
    env_file:
      - .env
    volumes:
-     - postgres_data:/var/lib/postgresql/data
+     - nutri_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  nutri_postgres_data:
