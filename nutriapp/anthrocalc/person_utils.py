@@ -107,3 +107,66 @@ def fetch_metrics_from_visits(visits):
 
 def calculate_indexes():
     pass
+
+
+def get_nutritional_status(latest_metric, previous_metric=None):
+    """
+    Evaluates nutritional status from WHO Z-scores, clinical signs, and trends.
+    Returns a dictionary with status string, main badge CSS class, and list of badge dicts.
+
+    FIXME: the ranges and the rule engine should be configurable.
+    Range and criteria of metrics should not need just hard-coded values.
+    """
+    if not latest_metric:
+        return {
+            "status": "Sin datos",
+            "badge_class": "secondary",
+            "badges": [{"text": "Sin datos", "class": "secondary"}],
+        }
+
+    badges = []
+
+    # Danger signs / Severe Acute Malnutrition with Edema
+    if latest_metric.edema:
+        badges.append({"text": "Desnutrición Aguda Severa (Edema)", "class": "danger"})
+    elif latest_metric.wfhz is not None:
+        if latest_metric.wfhz < -3:
+            badges.append({"text": "Desnutrición Aguda Severa", "class": "danger"})
+        elif latest_metric.wfhz < -2:
+            badges.append({"text": "Desnutrición Aguda Moderada", "class": "warning"})
+        elif latest_metric.wfhz > 3:
+            badges.append({"text": "Obesidad", "class": "danger"})
+        elif latest_metric.wfhz > 2:
+            badges.append({"text": "Sobrepeso", "class": "warning"})
+
+    # HAZ: Chronic malnutrition (stunting)
+    if latest_metric.hfaz is not None:
+        if latest_metric.hfaz < -3:
+            badges.append({"text": "Desnutrición Crónica Severa", "class": "danger"})
+        elif latest_metric.hfaz < -2:
+            badges.append({"text": "Desnutrición Crónica", "class": "warning"})
+
+    # WAZ: Underweight
+    if latest_metric.wfaz is not None and not any(b["class"] in ("danger", "warning") for b in badges):
+        if latest_metric.wfaz < -3:
+            badges.append({"text": "Bajo Peso Severo", "class": "danger"})
+        elif latest_metric.wfaz < -2:
+            badges.append({"text": "Bajo Peso", "class": "warning"})
+
+    # Weight loss alert compared to previous metric
+    if (
+        previous_metric
+        and latest_metric.weight is not None
+        and previous_metric.weight is not None
+        and latest_metric.weight < previous_metric.weight
+    ):
+        badges.append({"text": "Alerta: Pérdida de Peso", "class": "danger"})
+
+    if not badges:
+        badges.append({"text": "Normal", "class": "success"})
+
+    return {
+        "status": ", ".join([b["text"] for b in badges]),
+        "badge_class": badges[0]["class"],
+        "badges": badges,
+    }
