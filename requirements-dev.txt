@@ -1,0 +1,7 @@
+# Dev-only, on top of requirements.txt. Not needed to run the app or the
+# existing anthrocalc.tests suite - only for anthrocalc.tests_e2e.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   playwright install chromium
+#   python manage.py test anthrocalc.tests_e2e
+playwright
