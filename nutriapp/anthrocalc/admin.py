@@ -4,7 +4,8 @@ from .models import *
 
 class HouseholdStatusInline(admin.StackedInline):
     model = HouseholdStatus
-    can_delete = False
+    extra = 0
+    ordering = ("-recorded_at",)
 
 
 @admin.register(Community)
@@ -77,7 +78,10 @@ class RoofMaterialAdmin(admin.ModelAdmin):
 
 @admin.register(HouseholdStatus)
 class HouseholdStatusAdmin(admin.ModelAdmin):
-    list_display = ("family", "water_source", "sanitation_type", "household_income_proxy")
+    list_display = ("family", "recorded_at", "water_source", "sanitation_type", "household_income_proxy")
+    list_filter = ("recorded_at", "water_source", "sanitation_type", "household_income_proxy")
+    search_fields = ("family__responsible_name",)
+    date_hierarchy = "recorded_at"
 
 
 @admin.register(EnvironmentMetric)

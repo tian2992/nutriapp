@@ -195,10 +195,8 @@ class VisitDetail(DetailView):
         context = super().get_context_data(**kwargs)
         context["metrics"] = Metric.objects.filter(visit=self.object.id)
         context["env_metrics"] = EnvironmentMetric.objects.filter(visit=self.object.id)
-        try:
-            context["household_status"] = HouseholdStatus.objects.get(family=self.object.patient.family)
-        except HouseholdStatus.DoesNotExist:
-            context["household_status"] = None
+        family = self.object.patient.family
+        context["household_status"] = family.status_as_of(self.object.date) if family else None
         return context
 
 
@@ -350,6 +348,7 @@ class HouseholdStatusCreation(CreateView):
     model = HouseholdStatus
     fields = [
         "family",
+        "recorded_at",
         "water_source",
         "sanitation_type",
         "floor_material",
@@ -386,6 +385,7 @@ class HouseholdStatusCreation(CreateView):
 class HouseholdStatusUpdate(UpdateView):
     model = HouseholdStatus
     fields = [
+        "recorded_at",
         "water_source",
         "sanitation_type",
         "floor_material",
