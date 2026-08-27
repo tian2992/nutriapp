@@ -15,13 +15,6 @@ class CommunityAdmin(admin.ModelAdmin):
     list_filter = ("municipality", "department")
 
 
-@admin.register(Community)
-class CommunityAdmin(admin.ModelAdmin):
-    list_display = ("name", "municipality", "department", "contact_person", "created_at")
-    search_fields = ("name", "municipality", "department", "contact_person")
-    list_filter = ("municipality", "department")
-
-
 @admin.register(Family)
 class FamilyAdmin(admin.ModelAdmin):
     list_display = ("responsible_name", "community")
