@@ -45,7 +45,9 @@ RUN mkdir -p /app/static /app/media && chown -R appuser:appuser /app/static /app
 
 COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
 # Copying the contents of the nutriapp folder so manage.py is in /app
+COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
 COPY --chown=appuser:appuser nutriapp /app
+RUN chmod +x /app/entrypoint.sh
 
 USER appuser
 
@@ -54,6 +56,8 @@ EXPOSE 8000
 # Health check (assuming admin is enabled in urls.py)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/admin/ || exit 1
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Gunicorn setup for nutriapp project structure
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "nutriapp.wsgi:application"]
