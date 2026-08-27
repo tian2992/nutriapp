@@ -15,7 +15,10 @@
                 {% translate "Plataforma integral para el seguimiento longitudinal del crecimiento infantil, registro de visitas en campo y evaluación de indicadores socioambientales para la prevención y atención temprana de la malnutrición." %}
             </p>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-primary btn-lg mr-2 mb-2" href="{% url 'patients:list' %}">
+                <a class="btn btn-primary btn-lg mr-2 mb-2" href="{% url 'communities:list' %}">
+                    {% translate "Comunidades y Jornadas" %}
+                </a>
+                <a class="btn btn-outline-primary btn-lg mr-2 mb-2" href="{% url 'patients:list' %}">
                     {% translate "Ver Niños Registrados" %}
                 </a>
                 <a class="btn btn-outline-primary btn-lg mr-2 mb-2" href="{% url 'visits:new' %}">
@@ -30,15 +33,19 @@
             <div class="card shadow-sm border-0 bg-white p-3">
                 <h6 class="text-uppercase text-muted font-weight-bold mb-3">{% translate "Resumen del Sistema" %}</h6>
                 <div class="row text-center">
-                    <div class="col-4 border-right">
-                        <div class="h3 font-weight-bold text-primary mb-0">{{ patient_count|default:"0" }}</div>
+                    <div class="col-3 border-right">
+                        <div class="h3 font-weight-bold text-primary mb-0">{{ community_count|default:"0" }}</div>
+                        <small class="text-muted">{% translate "Comunidades" %}</small>
+                    </div>
+                    <div class="col-3 border-right">
+                        <div class="h3 font-weight-bold text-success mb-0">{{ patient_count|default:"0" }}</div>
                         <small class="text-muted">{% translate "Niños" %}</small>
                     </div>
-                    <div class="col-4 border-right">
-                        <div class="h3 font-weight-bold text-success mb-0">{{ visit_count|default:"0" }}</div>
+                    <div class="col-3 border-right">
+                        <div class="h3 font-weight-bold text-warning mb-0">{{ visit_count|default:"0" }}</div>
                         <small class="text-muted">{% translate "Visitas" %}</small>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <div class="h3 font-weight-bold text-info mb-0">{{ metric_count|default:"0" }}</div>
                         <small class="text-muted">{% translate "Métricas" %}</small>
                     </div>

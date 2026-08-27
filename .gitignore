@@ -4,3 +4,7 @@ venv/
 .idea/
 /nutriapp/anthrocalc/migrations/*
 /nutriapp/db.sqlite3
+/nutriapp/exports/
+
+# Cant commit ansible host files!
+hosts

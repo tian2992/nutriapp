@@ -1,15 +1,72 @@
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.timezone import now
 from django.urls import reverse
 
 # Create your models here.
 
 
+class Community(models.Model):
+    """Represents a geographical community, village, or sector."""
+
+    name = models.CharField(max_length=200, verbose_name="Nombre de la comunidad")
+    municipality = models.CharField(
+        max_length=150, blank=True, default="Rabinal", verbose_name="Municipio"
+    )
+    department = models.CharField(
+        max_length=150, blank=True, default="Baja Verapaz", verbose_name="Departamento"
+    )
+    contact_person = models.CharField(
+        max_length=200, blank=True, verbose_name="Líder / Promotor encargado"
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name="Notas")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comunidad"
+        verbose_name_plural = "Comunidades"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.municipality})"
+
+    def get_absolute_url(self):
+        return reverse("communities:detail", args=[str(self.id)])
+
+
 class Family(models.Model):
     responsible_name = models.TextField(null=False)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="families",
+        verbose_name="Comunidad",
+    )
+    allowed_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="accessible_families",
+        verbose_name="Usuarios con acceso",
+    )
 
     def __str__(self):
         return self.responsible_name
+
+    @property
+    def current_status(self):
+        """Most recently recorded HouseholdStatus for this family, if any."""
+        return self.statuses.first()  # HouseholdStatus.Meta.ordering is -recorded_at, -id
+
+    def status_as_of(self, reference_date):
+        """HouseholdStatus that applied on reference_date (last one recorded on or before it)."""
+        if reference_date is None:
+            return self.current_status
+        if hasattr(reference_date, "date"):
+            reference_date = reference_date.date()
+        return self.statuses.as_of(reference_date).first()
 
 
 class WaterSource(models.Model):
@@ -67,14 +124,34 @@ class RoofMaterial(models.Model):
         verbose_name_plural = "Materiales del techo"
 
 
+class HouseholdStatusQuerySet(models.QuerySet):
+    def as_of(self, reference_date):
+        """Status records effective on or before reference_date, most recent first."""
+        return self.filter(recorded_at__lte=reference_date).order_by("-recorded_at", "-id")
+
+
 class HouseholdStatus(models.Model):
+    """A dated snapshot of a household's living conditions.
+
+    A family accumulates one of these per time it's assessed, so conditions
+    can change over the years a family is tracked. Use `Family.status_as_of`
+    to get the record that applied on a given visit date, and
+    `Family.current_status` for the latest known one. Never mutate a past
+    record's `recorded_at` to "update" it - create a new one instead, or the
+    history is lost.
+    """
+
     INCOME_PROXY_CHOICES = [
         ("low", "Bajo"),
         ("medium", "Medio"),
         ("high", "Alto"),
     ]
 
-    family = models.OneToOneField(Family, on_delete=models.CASCADE, related_name="status", verbose_name="Familia")
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="statuses", verbose_name="Familia")
+    recorded_at = models.DateField(
+        default=timezone.localdate, verbose_name="Fecha de registro", help_text="Fecha en que se observó este estado."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
     water_source = models.ForeignKey(
         WaterSource, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fuente de agua"
     )
@@ -94,12 +171,16 @@ class HouseholdStatus(models.Model):
         max_length=20, choices=INCOME_PROXY_CHOICES, null=True, blank=True, verbose_name="Proxy de ingresos del hogar"
     )
 
+    objects = HouseholdStatusQuerySet.as_manager()
+
     def __str__(self):
-        return f"Estado de hogar: {self.family.responsible_name}"
+        return f"Estado de hogar: {self.family.responsible_name} ({self.recorded_at})"
 
     class Meta:
         verbose_name = "Estado de hogar"
         verbose_name_plural = "Estados de hogar"
+        ordering = ["-recorded_at", "-id"]
+        indexes = [models.Index(fields=["family", "-recorded_at"])]
 
 
 class Patient(models.Model):
@@ -134,6 +215,10 @@ class Patient(models.Model):
 
     notes = models.TextField(null=True, blank=True, verbose_name="Notas")
 
+    @property
+    def community(self):
+        return self.family.community if self.family else None
+
     def get_absolute_url(self):
         return reverse("patients:detail", args=[str(self.id)])
 
@@ -144,9 +229,27 @@ class Patient(models.Model):
 
 
 class MultipleVisit(models.Model):
-    """Models a visit to a community or group with multiple patients."""
+    """Represents a measurement round (jornada) in a specific community."""
 
-    date = models.DateTimeField(default=now)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name="multiple_visits",
+        verbose_name="Comunidad",
+    )
+    date = models.DateTimeField(default=now, verbose_name="Fecha de jornada")
+    responsible_name = models.CharField(
+        max_length=200, blank=True, verbose_name="Encargado de medición"
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name="Notas de la jornada")
+
+    class Meta:
+        verbose_name = "Jornada / Visita Masiva"
+        verbose_name_plural = "Jornadas / Visitas Masivas"
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"Jornada {self.community.name} - {self.date.strftime('%Y-%m-%d')}"
 
 
 # A point in time where metrics are taken

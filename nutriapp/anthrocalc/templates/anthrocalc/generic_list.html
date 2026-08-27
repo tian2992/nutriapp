@@ -3,36 +3,66 @@
 {% load i18n %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h1 class="h3 mb-0">{{ title }}</h1>
+    <div class="d-flex gap-2">
+        <a class="btn btn-secondary" role="button" href="?{% if selected_community %}community={{ selected_community }}&{% endif %}export=csv">{% translate "Exportar CSV" %}</a>
+        {% if new_url %}
+        <a class="btn btn-primary" role="button" href="{{ new_url }}">{% translate "Crear nuevo" %}</a>
+        {% endif %}
+    </div>
+</div>
 
-<p>
-    {% if new_url %}
-    <a class="btn btn-primary" role="button" href="{{ new_url }}">{% translate "Crear nuevo" %}</a>
-    {% endif %}
-    <a class="btn btn-secondary" role="button" href="?export=csv">{% translate "Exportar CSV" %}</a>
-</p>
+{% if communities %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label for="communityFilter" class="col-form-label fw-bold">{% translate "Filtrar por Comunidad:" %}</label>
+            </div>
+            <div class="col-auto">
+                <select name="community" id="communityFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">{% translate "-- Todas las comunidades --" %}</option>
+                    {% for c in communities %}
+                        <option value="{{ c.id }}" {% if selected_community == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }} ({{ c.municipality }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_community %}
+            <div class="col-auto">
+                <a href="." class="btn btn-sm btn-outline-secondary">{% translate "Limpiar filtro" %}</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endif %}
 
-<table class="table table-striped">
+<table class="table table-striped table-sm">
     <thead>
         <tr>
             {% for label in labels %}
             <th>{{ label }}</th>
             {% endfor %}
-            <th>{% translate "Acciones" %}</th>
+            <th class="text-end">{% translate "Acciones" %}</th>
         </tr>
     </thead>
     <tbody>
         {% for object in object_list %}
         <tr>
             {% for field in fields %}
-            <td>{{ object|get_attr:field }}</td>
+            <td>{{ object|get_attr:field|default:"-" }}</td>
             {% endfor %}
-            <td>
-                <a href="{{ object.get_absolute_url }}">{% translate "Ver" %}</a>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="{{ object.get_absolute_url }}">{% translate "Ver" %}</a>
                 {% if edit_url_name %}
-                | <a href="{% url edit_url_name object.id %}">{% translate "Editar" %}</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url edit_url_name object.id %}">{% translate "Editar" %}</a>
                 {% endif %}
             </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{{ fields|length|add:1 }}" class="text-center text-muted">{% translate "No hay registros disponibles." %}</td>
         </tr>
         {% endfor %}
     </tbody>

@@ -24,6 +24,7 @@ app_name = "nutriapp"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("", include("anthrocalc.community_views_urls", namespace="communities")),
     path("", include("anthrocalc.patient_views_urls", namespace="patients")),
     path("", include("anthrocalc.visit_views_urls", namespace="visits")),
     path("", include("anthrocalc.metrics_views_urls", namespace="metrics")),
