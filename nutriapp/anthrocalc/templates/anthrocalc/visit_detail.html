@@ -55,13 +55,15 @@
     <h3>{% translate "Estado del Hogar (Condiciones Generales)" %}</h3>
     {% if household_status %}
       <div>
+          <p class="text-muted">{% translate "Estado registrado el:" %} {{ household_status.recorded_at }}</p>
           <strong>{% translate "Fuente de agua:" %} {{ household_status.water_source|default:"n/a" }} <br />
           <strong>{% translate "Saneamiento:" %} {{ household_status.sanitation_type|default:"n/a" }} <br />
           <strong>{% translate "Material del piso:" %} {{ household_status.floor_material|default:"n/a" }} <br />
           <strong>{% translate "Material de paredes:" %} {{ household_status.wall_material|default:"n/a" }} <br />
           <strong>{% translate "Material del techo:" %} {{ household_status.roof_material|default:"n/a" }} <br />
           <strong>{% translate "Ingresos (Proxy):" %} {{ household_status.get_household_income_proxy_display|default:"n/a" }} <br />
-          <a class="btn btn-sm btn-primary" role="button" href='{% url "visits:household_edit" household_status.id %}?next={{ request.path }}'>{% translate "Actualizar Estado de Hogar" %}</a>
+          <a class="btn btn-sm btn-info" role="button" href='{% url "visits:household_new" %}?family={{visit.patient.family.id}}&next={{ request.path }}'>{% translate "Registrar Nuevo Estado de Hogar" %}</a>
+          <a class="btn btn-sm btn-link" role="button" href='{% url "visits:household_edit" household_status.id %}?next={{ request.path }}'>{% translate "Actualizar condiciones de este Hogar" %}</a>
       </div>
     {% else %}
       <p>{% translate "No se ha registrado el hogar para esta familia." %}</p>

@@ -1,6 +1,7 @@
 Django>=5.0,<5.1
 pandas
 numpy
+pyarrow
 python-dotenv
 matplotlib
 gunicorn

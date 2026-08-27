@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.timezone import now
 from django.urls import reverse
 
@@ -53,6 +54,19 @@ class Family(models.Model):
 
     def __str__(self):
         return self.responsible_name
+
+    @property
+    def current_status(self):
+        """Most recently recorded HouseholdStatus for this family, if any."""
+        return self.statuses.first()  # HouseholdStatus.Meta.ordering is -recorded_at, -id
+
+    def status_as_of(self, reference_date):
+        """HouseholdStatus that applied on reference_date (last one recorded on or before it)."""
+        if reference_date is None:
+            return self.current_status
+        if hasattr(reference_date, "date"):
+            reference_date = reference_date.date()
+        return self.statuses.as_of(reference_date).first()
 
 
 class WaterSource(models.Model):
@@ -110,14 +124,34 @@ class RoofMaterial(models.Model):
         verbose_name_plural = "Materiales del techo"
 
 
+class HouseholdStatusQuerySet(models.QuerySet):
+    def as_of(self, reference_date):
+        """Status records effective on or before reference_date, most recent first."""
+        return self.filter(recorded_at__lte=reference_date).order_by("-recorded_at", "-id")
+
+
 class HouseholdStatus(models.Model):
+    """A dated snapshot of a household's living conditions.
+
+    A family accumulates one of these per time it's assessed, so conditions
+    can change over the years a family is tracked. Use `Family.status_as_of`
+    to get the record that applied on a given visit date, and
+    `Family.current_status` for the latest known one. Never mutate a past
+    record's `recorded_at` to "update" it - create a new one instead, or the
+    history is lost.
+    """
+
     INCOME_PROXY_CHOICES = [
         ("low", "Bajo"),
         ("medium", "Medio"),
         ("high", "Alto"),
     ]
 
-    family = models.OneToOneField(Family, on_delete=models.CASCADE, related_name="status", verbose_name="Familia")
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="statuses", verbose_name="Familia")
+    recorded_at = models.DateField(
+        default=timezone.localdate, verbose_name="Fecha de registro", help_text="Fecha en que se observó este estado."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
     water_source = models.ForeignKey(
         WaterSource, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fuente de agua"
     )
@@ -137,12 +171,16 @@ class HouseholdStatus(models.Model):
         max_length=20, choices=INCOME_PROXY_CHOICES, null=True, blank=True, verbose_name="Proxy de ingresos del hogar"
     )
 
+    objects = HouseholdStatusQuerySet.as_manager()
+
     def __str__(self):
-        return f"Estado de hogar: {self.family.responsible_name}"
+        return f"Estado de hogar: {self.family.responsible_name} ({self.recorded_at})"
 
     class Meta:
         verbose_name = "Estado de hogar"
         verbose_name_plural = "Estados de hogar"
+        ordering = ["-recorded_at", "-id"]
+        indexes = [models.Index(fields=["family", "-recorded_at"])]
 
 
 class Patient(models.Model):
