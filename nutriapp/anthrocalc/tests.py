@@ -1,11 +1,13 @@
 import datetime
+import pandas as pd
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from .analytics import build_longform_dataframe
 from .forms import PatientForm, MassMeasurementRowForm
-from .models import Community, Family, Metric, MultipleVisit, Patient, Visit
+from .models import Community, EnvironmentMetric, Family, HouseholdStatus, Metric, MultipleVisit, Patient, Visit, WaterSource
 from .person_utils import get_nutritional_status
 
 User = get_user_model()
@@ -418,6 +420,84 @@ class NutritionalStatusHelperTests(TestCase):
         m2 = Metric.objects.create(visit=v2, weight=11.5, height=81.0)
         status = get_nutritional_status(m2, previous_metric=m1)
         self.assertIn("Alerta: Pérdida de Peso", status["status"])
+
+
+class HouseholdStatusHistoryTests(TestCase):
+    def setUp(self):
+        self.family = Family.objects.create(responsible_name="Familia Test")
+        self.well = WaterSource.objects.create(name="Pozo")
+        self.river = WaterSource.objects.create(name="Río")
+        # Created out of chronological order to prove lookups sort by recorded_at, not insertion order.
+        HouseholdStatus.objects.create(family=self.family, recorded_at=datetime.date(2024, 6, 1), water_source=self.river)
+        HouseholdStatus.objects.create(family=self.family, recorded_at=datetime.date(2023, 1, 1), water_source=self.well)
+
+    def test_status_as_of_picks_the_snapshot_in_effect_on_that_date(self):
+        status = self.family.status_as_of(datetime.date(2023, 6, 1))
+        self.assertEqual(status.water_source, self.well)
+
+    def test_status_as_of_picks_the_later_snapshot_once_it_applies(self):
+        status = self.family.status_as_of(datetime.date(2024, 8, 1))
+        self.assertEqual(status.water_source, self.river)
+
+    def test_status_as_of_before_any_snapshot_is_none(self):
+        status = self.family.status_as_of(datetime.date(2022, 1, 1))
+        self.assertIsNone(status)
+
+    def test_current_status_is_the_most_recent_snapshot(self):
+        self.assertEqual(self.family.current_status.water_source, self.river)
+
+
+class LongformExportTests(TestCase):
+    def setUp(self):
+        self.community = Community.objects.create(name="Aldea Test")
+        self.family = Family.objects.create(responsible_name="Familia Test", community=self.community)
+        self.well = WaterSource.objects.create(name="Pozo")
+        self.river = WaterSource.objects.create(name="Río")
+        HouseholdStatus.objects.create(family=self.family, recorded_at=datetime.date(2024, 6, 1), water_source=self.river)
+        HouseholdStatus.objects.create(family=self.family, recorded_at=datetime.date(2023, 1, 1), water_source=self.well)
+
+        self.patient = Patient.objects.create(
+            code="C1", name="Niño Test", gender="M", dob=datetime.date(2022, 1, 1), family=self.family
+        )
+        self.visit1 = Visit.objects.create(patient=self.patient, date=datetime.datetime(2023, 6, 1))
+        Metric.objects.create(visit=self.visit1, weight=10.0, height=75.0, standing_or_upright=False)
+        EnvironmentMetric.objects.create(visit=self.visit1, dietary_diversity_score=4, breastfeeding=True)
+
+        self.visit2 = Visit.objects.create(patient=self.patient, date=datetime.datetime(2024, 8, 1))
+        Metric.objects.create(visit=self.visit2, weight=13.0, height=88.0, standing_or_upright=True)
+
+    def test_one_row_per_visit(self):
+        df = build_longform_dataframe()
+        self.assertEqual(len(df), 2)
+
+    def test_visit_number_and_days_since_first_visit(self):
+        df = build_longform_dataframe()
+        row1 = df[df["visit_id"] == self.visit1.id].iloc[0]
+        row2 = df[df["visit_id"] == self.visit2.id].iloc[0]
+        self.assertEqual(row1["visit_number"], 1)
+        self.assertEqual(row2["visit_number"], 2)
+        self.assertEqual(row1["days_since_first_visit"], 0)
+        self.assertEqual(row2["days_since_first_visit"], (datetime.date(2024, 8, 1) - datetime.date(2023, 6, 1)).days)
+
+    def test_household_status_is_joined_as_of_the_visit_date(self):
+        df = build_longform_dataframe()
+        row1 = df[df["visit_id"] == self.visit1.id].iloc[0]
+        row2 = df[df["visit_id"] == self.visit2.id].iloc[0]
+        self.assertEqual(row1["water_source"], "Pozo")
+        self.assertEqual(row2["water_source"], "Río")
+
+    def test_environment_metric_fields_are_present(self):
+        df = build_longform_dataframe()
+        row1 = df[df["visit_id"] == self.visit1.id].iloc[0]
+        row2 = df[df["visit_id"] == self.visit2.id].iloc[0]
+        self.assertEqual(row1["dietary_diversity_score"], 4)
+        self.assertTrue(row1["breastfeeding"])
+        self.assertTrue(pd.isna(row2["dietary_diversity_score"]))
+
+    def test_no_identifying_fields_are_exported(self):
+        df = build_longform_dataframe()
+        for leaky_column in ("name", "mother_name", "code", "responsible_name", "contact_person"):
+            self.assertNotIn(leaky_column, df.columns)
 
 
 class CsrfSettingsTests(TestCase):
