@@ -15,3 +15,7 @@ static/
 
 # Cant commit ansible host files!
 hosts
+
+
+# Pseudonymization keys map pseudonym back to real names
+scripts/rekey*.csv
