@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count
 from django.db.models.manager import BaseManager
 from django.forms import formset_factory
 from django.http import HttpResponse
@@ -93,12 +94,18 @@ class PatientList(ExportableListView):
         ("dob", "Fecha de Nacimiento"),
         ("family__community__name", "Comunidad"),
         ("family__responsible_name", "Familia"),
+        ("measurement_count", "Mediciones"),
     ]
     new_url_name = "patients:new"
     edit_url_name = "patients:edit"
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = (
+            super()
+            .get_queryset()
+            .select_related("family", "family__community")
+            .annotate(measurement_count=Count("visit__metric"))
+        )
         community_id = self.request.GET.get("community")
         if community_id:
             qs = qs.filter(family__community_id=community_id)
@@ -129,6 +136,24 @@ class PatientDetail(DetailView):
             item["age_months"] = age["months"]
 
         context["visits_metrics"] = visits_metrics
+        context["measurement_count"] = sum(1 for item in visits_metrics if item["metric"])
+        return context
+
+
+@method_decorator(login_required, name="dispatch")
+class FamilyDetail(DetailView):
+    model = Family
+    template_name = "anthrocalc/family_detail.html"
+    context_object_name = "family"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["patients"] = (
+            Patient.objects.filter(family=self.object)
+            .annotate(measurement_count=Count("visit__metric"))
+            .order_by("name")
+        )
+        context["household_status"] = self.object.current_status
         return context
 
 
