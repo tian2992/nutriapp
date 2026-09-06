@@ -157,6 +157,7 @@ class FamilyDetail(DetailView):
         return context
 
 
+@method_decorator(login_required, name="dispatch")
 class PatientCreation(CreateView):
     model = Patient
     form_class = PatientForm
@@ -169,12 +170,14 @@ class PatientCreation(CreateView):
         return initial
 
 
+@method_decorator(login_required, name="dispatch")
 class PatientUpdate(UpdateView):
     model = Patient
     form_class = PatientForm
     success_url = reverse_lazy("patients:list")
 
 
+@method_decorator(login_required, name="dispatch")
 class PatientDelete(DeleteView):
     model = Patient
     success_url = reverse_lazy("patients:list")
@@ -225,6 +228,7 @@ class VisitDetail(DetailView):
         return context
 
 
+@method_decorator(login_required, name="dispatch")
 class VisitCreation(CreateView):
     model = Visit
     metric = Metric
@@ -244,12 +248,14 @@ class VisitCreation(CreateView):
         return initial
 
 
+@method_decorator(login_required, name="dispatch")
 class VisitUpdate(UpdateView):
     model = Visit
     success_url = reverse_lazy("visits:list")
     fields = ["patient", "date"]
 
 
+@method_decorator(login_required, name="dispatch")
 class VisitDelete(DeleteView):
     model = Visit
     success_url = reverse_lazy("visits:list")
@@ -279,6 +285,7 @@ class MetricDetail(DetailView):
     model = Metric
 
 
+@method_decorator(login_required, name="dispatch")
 class MetricCreation(CreateView):
     model = Metric
     form_class = MetricForm
@@ -319,6 +326,7 @@ class MetricCreation(CreateView):
     # fields = ['visit.patient', 'weight', 'height']
 
 
+@method_decorator(login_required, name="dispatch")
 class MetricUpdate(UpdateView):
     model = Metric
     form_class = MetricForm
@@ -327,11 +335,13 @@ class MetricUpdate(UpdateView):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
+@method_decorator(login_required, name="dispatch")
 class MetricDelete(DeleteView):
     model = Metric
     success_url = reverse_lazy("metrics:list")
 
 
+@method_decorator(login_required, name="dispatch")
 class EnvironmentMetricCreation(CreateView):
     model = EnvironmentMetric
     fields = [
@@ -354,6 +364,7 @@ class EnvironmentMetricCreation(CreateView):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
+@method_decorator(login_required, name="dispatch")
 class EnvironmentMetricUpdate(UpdateView):
     model = EnvironmentMetric
     fields = [
@@ -369,6 +380,7 @@ class EnvironmentMetricUpdate(UpdateView):
         return reverse("visits:detail", args=(self.object.visit.id,))
 
 
+@method_decorator(login_required, name="dispatch")
 class HouseholdStatusCreation(CreateView):
     model = HouseholdStatus
     fields = [
@@ -407,6 +419,7 @@ class HouseholdStatusCreation(CreateView):
         return reverse("patients:list")
 
 
+@method_decorator(login_required, name="dispatch")
 class HouseholdStatusUpdate(UpdateView):
     model = HouseholdStatus
     fields = [
@@ -606,6 +619,7 @@ class CommunityDetail(DetailView):
         return response
 
 
+@method_decorator(login_required, name="dispatch")
 class CommunityCreation(CreateView):
     model = Community
     form_class = CommunityForm
@@ -613,6 +627,7 @@ class CommunityCreation(CreateView):
     success_url = reverse_lazy("communities:list")
 
 
+@method_decorator(login_required, name="dispatch")
 class CommunityUpdate(UpdateView):
     model = Community
     form_class = CommunityForm
@@ -620,6 +635,7 @@ class CommunityUpdate(UpdateView):
     success_url = reverse_lazy("communities:list")
 
 
+@method_decorator(login_required, name="dispatch")
 class CommunityDelete(DeleteView):
     model = Community
     template_name = "anthrocalc/community_confirm_delete.html"
