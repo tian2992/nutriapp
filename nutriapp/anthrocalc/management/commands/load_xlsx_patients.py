@@ -1,10 +1,13 @@
-"""Load children and their measurement rounds from a NIMACABAJ field workbook.
+"""Load children and their measurement rounds from a field workbook.
 
     ./manage.py load_xlsx_patients --file scripts/tabulacion.xlsx --dry-run
     ./manage.py load_xlsx_patients --file scripts/tabulacion.xlsx
 
-The sheet layout and the reasoning behind every rule live in
-``anthrocalc/bulk_import.py`` and ``docs/features/bulk_patients/``.
+Which columns hold what comes from a profile, so a differently shaped file is
+``--profile mylayout.json`` rather than a code change. Draft one for a new file
+with ``./manage.py inspect_xlsx_layout``. The sheet layout and the reasoning
+behind every rule live in ``anthrocalc/bulk_import.py`` and
+``docs/features/bulk_patients/``.
 """
 
 import datetime as dt
@@ -31,7 +34,19 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--file", required=True, help="Path to the .xlsx workbook.")
-        parser.add_argument("--sheet", default=bulk_import.SHEET_NAME, help="Worksheet to read.")
+        parser.add_argument(
+            "--profile",
+            default=bulk_import.DEFAULT_PROFILE.name,
+            help=(
+                "Layout to read the sheet with: a built-in name "
+                f"({', '.join(sorted(bulk_import.PROFILES))}) or a path to a profile JSON."
+            ),
+        )
+        parser.add_argument(
+            "--sheet",
+            default=None,
+            help="Worksheet to read. Defaults to the one the profile names.",
+        )
         parser.add_argument(
             "--batch-id",
             default=None,
@@ -54,12 +69,15 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
 
         try:
-            parsed = bulk_import.parse_workbook(path, options["sheet"])
+            profile = bulk_import.load_profile(options["profile"])
+            sheet_name = options["sheet"] or profile.sheet_name
+            parsed = bulk_import.parse_workbook(path, profile, sheet_name)
         except (OSError, ValueError) as exc:
             raise CommandError(str(exc)) from exc
 
         self.stdout.write(
-            f"{path} · sheet {options['sheet']!r} · batch {batch_id}"
+            f"{path} · sheet {sheet_name!r} · profile {profile.name!r} "
+            f"({len(profile.blocks)} rounds) · batch {batch_id}"
             + (" · DRY RUN (nothing will be kept)" if dry_run else "")
         )
         self.stdout.write(
