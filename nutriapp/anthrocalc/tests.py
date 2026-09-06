@@ -37,6 +37,45 @@ class ListTemplateTests(BaseAuthenticatedTestCase):
         self.assertIn("anthrocalc/community_list.html", [template.name for template in response.templates])
 
 
+class PatientListMeasurementAndFamilyTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="Nimacabaj", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia López", community=self.community)
+        self.patient = Patient.objects.create(
+            code="NIM01",
+            name="Ana López",
+            gender="F",
+            dob=datetime.date(2021, 5, 1),
+            family=self.family,
+        )
+        for weight, height in ((8.5, 70.0), (9.0, 72.0), (9.5, 74.0)):
+            visit = Visit.objects.create(patient=self.patient)
+            Metric.objects.create(visit=visit, weight=weight, height=height, standing_or_upright=True)
+
+    def test_patient_list_shows_measurement_count(self):
+        response = self.client.get(reverse("patients:list"))
+        self.assertEqual(response.status_code, 200)
+        patient = response.context["object_list"].get(pk=self.patient.pk)
+        self.assertEqual(patient.measurement_count, 3)
+        self.assertContains(response, "Mediciones")
+        self.assertContains(response, ">3</td>", html=False)
+
+    def test_patient_list_links_to_family(self):
+        response = self.client.get(reverse("patients:list"))
+        self.assertEqual(response.status_code, 200)
+        family_url = reverse("patients:family", args=[self.family.id])
+        self.assertContains(response, family_url)
+        self.assertContains(response, "Familia López")
+
+    def test_family_detail_lists_children_and_counts(self):
+        response = self.client.get(reverse("patients:family", args=[self.family.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("anthrocalc/family_detail.html", [template.name for template in response.templates])
+        self.assertContains(response, "Ana López")
+        self.assertContains(response, reverse("patients:detail", args=[self.patient.id]))
+        self.assertContains(response, ">3</td>", html=False)
+
 class LandingPageTests(TestCase):
     def setUp(self):
         self.client = Client()
