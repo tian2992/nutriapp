@@ -44,7 +44,7 @@
       <td><a href="{% url 'visits:detail' item.visit.id %}">{{ item.visit.date|date:"Y-m-d H:i" }}</a></td>
       <td>
         {% if item.age_days is not None and item.age_months is not None %}
-          {{ item.age_days|floatformat:"0" }}d / {{ item.age_months|floatformat:"0" }}m
+           {{ item.age_months|floatformat:"0" }}m + {{ item.age_days|floatformat:"0" }}d 
         {% else %}
           —
         {% endif %}
