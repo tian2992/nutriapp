@@ -37,6 +37,64 @@ class ListTemplateTests(BaseAuthenticatedTestCase):
         self.assertIn("anthrocalc/community_list.html", [template.name for template in response.templates])
 
 
+class FloatFormattingViewsTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="San Gabriel", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia Cortez", community=self.community)
+        self.patient = Patient.objects.create(
+            code="SG01",
+            name="Elena Cortez",
+            gender="F",
+            dob=datetime.date(2022, 1, 1),
+            family=self.family,
+        )
+        self.visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        self.metric = Metric.objects.create(
+            visit=self.visit,
+            weight=12.3456,
+            height=85.6789,
+            muac=14.5,
+            standing_or_upright=True,
+        )
+
+    def test_metric_list_floatformat(self):
+        response = self.client.get(reverse("metrics:list"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertTrue("12.35" in content or "12,35" in content)
+        self.assertTrue("85.68" in content or "85,68" in content)
+
+    def test_metric_detail_floatformat(self):
+        response = self.client.get(reverse("metrics:detail", args=[self.metric.id]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertTrue("12.35" in content or "12,35" in content)
+        self.assertTrue("85.68" in content or "85,68" in content)
+        self.assertTrue("14.50" in content or "14,50" in content)
+
+    def test_visit_detail_floatformat(self):
+        response = self.client.get(reverse("visits:detail", args=[self.visit.id]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertTrue("12.35" in content or "12,35" in content)
+        self.assertTrue("85.68" in content or "85,68" in content)
+
+    def test_patient_detail_floatformat(self):
+        response = self.client.get(reverse("patients:detail", args=[self.patient.id]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertTrue("12.35" in content or "12,35" in content)
+        self.assertTrue("85.68" in content or "85,68" in content)
+
+    def test_community_roster_floatformat(self):
+        response = self.client.get(reverse("communities:detail", args=[self.community.id]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertTrue("12.35" in content or "12,35" in content)
+        self.assertTrue("85.68" in content or "85,68" in content)
+
+
 class PatientListMeasurementAndFamilyTests(BaseAuthenticatedTestCase):
     def setUp(self):
         super().setUp()

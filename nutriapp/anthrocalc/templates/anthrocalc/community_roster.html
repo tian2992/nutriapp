@@ -152,9 +152,9 @@
                     {% if row.prev_metric %}
                         <small>
                             <strong>{{ row.prev_visit.date|date:"Y-m-d" }}</strong>:
-                            {{ row.prev_metric.weight }}kg, {{ row.prev_metric.height }}cm
+                            {{ row.prev_metric.weight|floatformat:2|default:"N/A"  }}kg, {{ row.prev_metric.height|floatformat:2|default:"N/A"  }}cm
                             {% if row.prev_metric.wfhz is not None or row.prev_metric.wfaz is not None or row.prev_metric.hfaz is not None %}
-                                <br><span class="text-muted">WHZ: {{ row.prev_metric.wfhz|floatformat:1|default:"-" }} | WAZ: {{ row.prev_metric.wfaz|floatformat:1|default:"-" }} | HAZ: {{ row.prev_metric.hfaz|floatformat:1|default:"-" }}</span>
+                                <br><span class="text-muted">WHZ: {{ row.prev_metric.wfhz|floatformat:2|default:"-" }} | WAZ: {{ row.prev_metric.wfaz|floatformat:2|default:"-" }} | HAZ: {{ row.prev_metric.hfaz|floatformat:2|default:"-" }}</span>
                             {% endif %}
                         </small>
                     {% else %}
@@ -165,9 +165,9 @@
                     {% if row.latest_metric %}
                         <small>
                             <strong>{{ row.latest_visit.date|date:"Y-m-d" }}</strong>:
-                            {{ row.latest_metric.weight }}kg, {{ row.latest_metric.height }}cm
+                            {{ row.latest_metric.weight|floatformat:2|default:"N/A"  }}kg, {{ row.latest_metric.height|floatformat:2|default:"N/A"  }}cm
                             {% if row.latest_metric.wfhz is not None or row.latest_metric.wfaz is not None or row.latest_metric.hfaz is not None %}
-                                <br><span class="text-muted">WHZ: {{ row.latest_metric.wfhz|floatformat:1|default:"-" }} | WAZ: {{ row.latest_metric.wfaz|floatformat:1|default:"-" }} | HAZ: {{ row.latest_metric.hfaz|floatformat:1|default:"-" }}</span>
+                                <br><span class="text-muted">WHZ: {{ row.latest_metric.wfhz|floatformat:2|default:"-" }} | WAZ: {{ row.latest_metric.wfaz|floatformat:2|default:"-" }} | HAZ: {{ row.latest_metric.hfaz|floatformat:2|default:"-" }}</span>
                             {% endif %}
                         </small>
                     {% else %}

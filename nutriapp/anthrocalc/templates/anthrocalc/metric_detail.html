@@ -6,9 +6,9 @@
 <h1>{% translate "Medición del niño:" %} {{ metric.visit.patient.name }}</h1>
 <p>{% translate "Fecha de visita:" %} <i>{{ metric.visit.date }}</i></p>
 
-<strong>{% translate "Peso:" %} {{metric.weight}} kg.<br />
-<strong>{% translate "Altura:" %} {{metric.height}} cm.<br />
-<strong>{% translate "MUAC:" %} {{metric.muac|default:"n/a"}} cm.<br />
+<strong>{% translate "Peso:" %}</strong> {{metric.weight|floatformat:2}} kg.<br />
+<strong>{% translate "Altura:" %}</strong> {{metric.height|floatformat:2}} cm.<br />
+<strong>{% translate "MUAC:" %}</strong> {{metric.muac|floatformat:2|default:"n/a"}} cm.<br />
 
 {% if metric.edema or metric.diarrhea or metric.intractable_vomiting or metric.convulsions or metric.lethargy_not_alert or metric.unconsciousness or metric.hypoglycemia or metric.high_fever or metric.hypothermia or metric.severe_dehydration or metric.lower_respiratory_tract_infection or metric.severe_anemia or metric.eye_signs_vit_a or metric.skin_lesions %}
   <div class="alert alert-danger mt-3">

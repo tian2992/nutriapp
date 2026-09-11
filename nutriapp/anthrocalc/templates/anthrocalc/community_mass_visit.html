@@ -105,7 +105,7 @@
                         </td>
                         <td class="small text-center table-secondary text-dark">
                             {% if pdata.prev_metric %}
-                                <strong>{{ pdata.prev_metric.weight }}kg</strong> / {{ pdata.prev_metric.height }}cm
+                                <strong>{{ pdata.prev_metric.weight|floatformat:2 }}kg</strong> / {{ pdata.prev_metric.height|floatformat:2 }}cm
                                 <br><span class="text-muted" style="font-size: 0.75rem;">{{ pdata.prev_visit.date|date:"Y-m-d" }}</span>
                             {% else %}
                                 <span class="text-muted">-</span>
