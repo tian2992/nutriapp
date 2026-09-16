@@ -11,10 +11,18 @@
         <dd class="col-sm-10"><i>{{ patient.gender }}</i></dd>
         <dt class="col-sm-2 text-md-right">{% translate "Fecha de nacimiento:" %}</dt>
         <dd class="col-sm-10"><i>{{ patient.dob }}</i></dd>
+        <dt class="col-sm-2 text-md-right">{% translate "Familia:" %}</dt>
+        <dd class="col-sm-10">
+            {% if patient.family %}
+                <a href="{% url 'patients:family' patient.family.id %}">{{ patient.family.responsible_name }}</a>
+            {% else %}
+                <span class="text-muted">{% translate "Sin familia asignada" %}</span>
+            {% endif %}
+        </dd>
+        <dt class="col-sm-2 text-md-right">{% translate "Mediciones:" %}</dt>
+        <dd class="col-sm-10"><i>{{ measurement_count }}</i></dd>
     </dl>
 </div>
-
-<!-- TODO: agregar info de madre -->
 
 <h2>{% translate "Visitas y Medidas" %}</h2>
 {% if visits_metrics %}
@@ -36,7 +44,7 @@
       <td><a href="{% url 'visits:detail' item.visit.id %}">{{ item.visit.date|date:"Y-m-d H:i" }}</a></td>
       <td>
         {% if item.age_days is not None and item.age_months is not None %}
-          {{ item.age_days|floatformat:"0" }}d / {{ item.age_months|floatformat:"0" }}m
+           {{ item.age_months|floatformat:"0" }}m + {{ item.age_days|floatformat:"0" }}d 
         {% else %}
           —
         {% endif %}
@@ -50,7 +58,7 @@
       </td>
       <td>
         {% if item.metric %}
-          {{ item.metric.height|floatformat:1 }}
+          {{ item.metric.height|floatformat:2 }}
         {% else %}
           —
         {% endif %}

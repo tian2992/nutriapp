@@ -6,7 +6,7 @@
 {% block content %}
 <div class="jumbotron bg-light p-4 p-md-5 rounded border mb-4">
     <div class="row align-items-center">
-        <div class="col-lg-8">
+        <div class="col-lg-7">
             <h1 class="display-5 font-weight-bold mb-2">{% translate "Nutriacción" %}</h1>
             <p class="lead text-primary font-weight-semibold mb-3">
                 {% translate "Sistema de Registro y Análisis Antropométrico y Nutricional Infantil" %}
@@ -14,6 +14,7 @@
             <p class="text-secondary mb-4">
                 {% translate "Plataforma integral para el seguimiento longitudinal del crecimiento infantil, registro de visitas en campo y evaluación de indicadores socioambientales para la prevención y atención temprana de la malnutrición." %}
             </p>
+            {% if user.is_authenticated %}
             <div class="d-flex flex-wrap gap-2">
                 <a class="btn btn-primary btn-lg mr-2 mb-2" href="{% url 'communities:list' %}">
                     {% translate "Comunidades y Jornadas" %}
@@ -28,14 +29,20 @@
                     {% translate "Panel de Administración" %}
                 </a>
             </div>
+            {% else %}
+            <div class="alert alert-note" role="note">
+                {% translate "Inicia sesión para acceder al sistema." %}
+                <a href="{% url 'admin:login' %}" class="alert-link">{% translate "Iniciar sesión" %}</a>.
+            </div>
+            {% endif %}
         </div>
-        <div class="col-lg-4 text-center mt-4 mt-lg-0">
+        <div class="col-lg-5 text-center mt-4 mt-lg-0">
             <div class="card shadow-sm border-0 bg-white p-3">
                 <h6 class="text-uppercase text-muted font-weight-bold mb-3">{% translate "Resumen del Sistema" %}</h6>
                 <div class="row text-center">
                     <div class="col-3 border-right">
                         <div class="h3 font-weight-bold text-primary mb-0">{{ community_count|default:"0" }}</div>
-                        <small class="text-muted">{% translate "Comunidades" %}</small>
+                        <small class="text-muted">{% translate "Comms." %}</small>
                     </div>
                     <div class="col-3 border-right">
                         <div class="h3 font-weight-bold text-success mb-0">{{ patient_count|default:"0" }}</div>
@@ -61,12 +68,16 @@
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title text-primary">{% translate "Niños y Familias" %}</h5>
                 <p class="card-text text-muted small flex-grow-1">
-                    {% translate "Gestión de perfiles infantiles, fechas de nacimiento, género y vinculación con las familias responsables." %}
+                    {% translate "Gestión de perfiles infantiles, fechas de nacimiento, género y familias." %}
                 </p>
+                {% if user.is_authenticated %}
                 <div class="mt-2">
                     <a href="{% url 'patients:list' %}" class="btn btn-sm btn-outline-primary mr-1">{% translate "Listado" %}</a>
                     <a href="{% url 'patients:new' %}" class="btn btn-sm btn-primary">{% translate "Nuevo" %}</a>
                 </div>
+                {% else %}
+                <p class="card-text text-muted small flex-grow-1">{% translate "Ingresa informacion socio-ambiental de la familia. Manejo de multiples hijos por familia. Control de diversidad nutricional, criterios WASH, etc." %}</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -78,10 +89,16 @@
                 <p class="card-text text-muted small flex-grow-1">
                     {% translate "Registro y seguimiento periódico de consultas en campo, jornadas comunitarias y controles nutricionales." %}
                 </p>
+                {% if user.is_authenticated %}
                 <div class="mt-2">
                     <a href="{% url 'visits:list' %}" class="btn btn-sm btn-outline-success mr-1">{% translate "Listado" %}</a>
                     <a href="{% url 'visits:new' %}" class="btn btn-sm btn-success">{% translate "Nueva" %}</a>
                 </div>
+                {% else %}
+                <p class="card-text text-muted small flex-grow-1">
+                    {% translate "Diseñado para campañas de lucha contra la malnutrición pero flexible para uso individual." %}
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -91,12 +108,17 @@
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title text-info">{% translate "Métricas y Diagnóstico" %}</h5>
                 <p class="card-text text-muted small flex-grow-1">
-                    {% translate "Cálculo de puntuaciones Z (peso/edad, talla/edad, peso/talla), perímetro braquial (MUAC) y signos clínicos." %}
+                    {% translate "Cálculo de puntuaciones Z (peso/edad, talla/edad, peso/talla; basado en pygrow2 y tablas de la OMS), opcionalmente perímetro braquial (MUAC) y signos clínicos." %}
                 </p>
+                <p class="card-text text-muted small flex-grow-1">
+                    {% translate "Buscamos ir mas allá basados en métodos de modelos mixtos. Comparar cada niño con su potencial de crecimiento, no solo con la OMS." %}
+                </p>
+                {% if user.is_authenticated %}
                 <div class="mt-2">
                     <a href="{% url 'metrics:list' %}" class="btn btn-sm btn-outline-info mr-1">{% translate "Listado" %}</a>
                     <a href="{% url 'metrics:new' %}" class="btn btn-sm btn-info">{% translate "Nueva" %}</a>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -108,9 +130,13 @@
                 <p class="card-text text-muted small flex-grow-1">
                     {% translate "Area para administrar usuarios, permisos, catálogos socioambientales y configuración." %}
                 </p>
+                {% if user.is_authenticated %}
                 <div class="mt-2">
                     <a href="{% url 'admin:index' %}" class="btn btn-sm btn-dark btn-block">{% translate "Ir al Admin" %}</a>
                 </div>
+                {% else %}
+
+                {% endif %}
             </div>
         </div>
     </div>
@@ -126,15 +152,15 @@
                 </p>
                 <ul class="list-unstyled mb-3">
                     <li class="mb-2">
-                        <strong>&bull; {% translate "Origen y Propósito:" %}</strong>
-                        {% translate "Creado originalmente para apoyar las campañas nutricionales de la Asociación Qachuu Aloom en Rabinal, Baja Verapaz, Guatemala, con la misión de mejorar la salud y calidad de vida de las comunidades." %}
+                        <strong>{% translate "Origen y Propósito:" %}</strong>
+                        {% translate "Creado originalmente para apoyar las campañas nutricionales de la Asociación Qachuu Aloom en Rabinal, Baja Verapaz, Guatemala, con la misión de mejorar la salud y calidad de vida de infantes y familias de cualquier lugar." %}
                     </li>
                     <li class="mb-2">
-                        <strong>&bull; {% translate "Enfoque Integral y Multivariable:" %}</strong>
+                        <strong>{% translate "Enfoque Integral y Multivariable:" %}</strong>
                         {% translate "Integra el seguimiento antropométrico con variables del entorno del hogar (fuentes de agua, saneamiento, materiales de vivienda) y prácticas de nutrición (lactancia, diversidad alimentaria)." %}
                     </li>
                     <li class="mb-2">
-                        <strong>&bull; {% translate "Software Libre y Abierto:" %}</strong>
+                        <strong>{% translate "Software Libre y Abierto:" %}</strong>
                         {% translate "Licenciado bajo GNU GPL v3 para facilitar su adopción y despliegue por parte de organizaciones comunitarias y del sector salud." %}
                     </li>
                 </ul>
@@ -150,9 +176,12 @@
                     {% translate "¿Tienes dudas, comentarios, requieres soporte técnico o te gustaría colaborar en el desarrollo de Nutriacción?" %}
                 </p>
                 <p class="card-text mb-4">
-                    {% translate "Puedes ponerte en contacto directamente a través de correo electrónico:" %}
+                    {% translate "Puedes ponerte en contacto directamente a través de correo electrónico o colaborar directamente en el proyecto:" %}
                 </p>
                 <div class="mt-auto">
+                    <a href="https://github.com/nutriaccion/nutriapp" class="btn btn-outline-secondary btn-block text-break" target="_blank">
+                        <strong>GitHub: nutriaccion</strong>
+                    </a>    
                     <a href="mailto:{{ contact_email|default:'code@sebastianoliva.com' }}" class="btn btn-outline-primary btn-block text-break">
                         <strong>{{ contact_email|default:'code@sebastianoliva.com' }}</strong>
                     </a>

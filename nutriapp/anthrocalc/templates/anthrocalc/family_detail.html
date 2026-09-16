@@ -1,0 +1,68 @@
+{% extends 'anthrocalc/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-0">{% translate "Familia:" %} {{ family.responsible_name }}</h1>
+        <p class="text-muted mb-0">
+            {% if family.community %}
+                <a href="{% url 'communities:detail' family.community.id %}">{{ family.community.name }}</a>
+                ({{ family.community.municipality }}, {{ family.community.department }})
+            {% else %}
+                {% translate "Sin comunidad asignada" %}
+            {% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-info" role="button" href="{% url 'visits:household_new' %}?family={{ family.id }}&next={{ request.path }}">
+            {% translate "Registrar Estado de Hogar" %}
+        </a>
+        <a class="btn btn-secondary" role="button" href="{% url 'patients:list' %}">{% translate "Regresar" %}</a>
+    </div>
+</div>
+
+{% if household_status %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <p class="mb-0">
+            <strong>{% translate "Estado de hogar más reciente:" %}</strong>
+            {{ household_status.recorded_at|date:"Y-m-d" }}
+            {% if household_status.water_source %} · {{ household_status.water_source }}{% endif %}
+            {% if household_status.sanitation_type %} · {{ household_status.sanitation_type }}{% endif %}
+            <a class="ms-2" href="{% url 'visits:household_edit' household_status.id %}?next={{ request.path }}">{% translate "Editar" %}</a>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<h2 class="h5">{% translate "Niños en esta familia" %}</h2>
+<table class="table table-striped table-sm">
+    <thead>
+        <tr>
+            <th scope="col">{% translate "Código" %}</th>
+            <th scope="col">{% translate "Nombre" %}</th>
+            <th scope="col">{% translate "Fecha de Nacimiento" %}</th>
+            <th scope="col" class="text-end">{% translate "Mediciones" %}</th>
+            <th scope="col" class="text-end">{% translate "Acciones" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for patient in patients %}
+        <tr>
+            <td>{{ patient.code }}</td>
+            <td><a href="{% url 'patients:detail' patient.id %}">{{ patient.name }}</a></td>
+            <td>{{ patient.dob }}</td>
+            <td class="text-end">{{ patient.measurement_count }}</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'patients:detail' patient.id %}">{% translate "Ver" %}</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">{% translate "No hay niños registrados en esta familia." %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,5 +1,4 @@
-version: '3.8'
-
+## Configuracion minima de Nutriaccion
 services:
   web:
     build: .

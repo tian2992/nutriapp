@@ -6,6 +6,13 @@ venv/
 /nutriapp/db.sqlite3
 /nutriapp/exports/
 
+#All of this local files should not be commited
+.env
+.postgres_password
+.production_secret_key
+logs/
+static/
+
 # Cant commit ansible host files!
 hosts
 

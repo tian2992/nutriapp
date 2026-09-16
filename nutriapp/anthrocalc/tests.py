@@ -19,23 +19,119 @@ class BaseAuthenticatedTestCase(TestCase):
         self.client = Client()
         self.client.login(username="testpromotor", password="password123")
 
+    def assertContainsFloats(self, response, *values, status_code=200):
+        if status_code is not None:
+            self.assertEqual(response.status_code, status_code)
+        content = response.content.decode("utf-8")
+        for val in values:
+            val_dot = str(val)
+            val_comma = val_dot.replace(".", ",")
+            candidates = [val_dot, val_comma]
+            if val_dot.endswith(".0"):
+                candidates.append(val_dot[:-2])
+            self.assertTrue(
+                any(c in content for c in candidates),
+                f"None of {candidates} found in response content",
+            )
+
 
 class ListTemplateTests(BaseAuthenticatedTestCase):
     def test_patient_list_uses_patient_template(self):
         response = self.client.get(reverse("patients:list"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/patient_list.html", [template.name for template in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/patient_list.html")
 
     def test_metric_list_uses_metric_template(self):
         response = self.client.get(reverse("metrics:list"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/metric_list.html", [template.name for template in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/metric_list.html")
 
     def test_community_list_uses_community_template(self):
         response = self.client.get(reverse("communities:list"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/community_list.html", [template.name for template in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/community_list.html")
 
+
+class FloatFormattingViewsTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="San Gabriel", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia Cortez", community=self.community)
+        self.patient = Patient.objects.create(
+            code="SG01",
+            name="Elena Cortez",
+            gender="F",
+            dob=datetime.date(2022, 1, 1),
+            family=self.family,
+        )
+        self.visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        self.metric = Metric.objects.create(
+            visit=self.visit,
+            weight=12.3456,
+            height=85.6789,
+            muac=14.5,
+            standing_or_upright=True,
+        )
+
+    def test_metric_list_floatformat(self):
+        response = self.client.get(reverse("metrics:list"))
+        self.assertContainsFloats(response, "12.35", "85.68")
+
+    def test_metric_detail_floatformat(self):
+        response = self.client.get(reverse("metrics:detail", args=[self.metric.id]))
+        self.assertContainsFloats(response, "12.35", "85.68", "14.50")
+
+    def test_visit_detail_floatformat(self):
+        response = self.client.get(reverse("visits:detail", args=[self.visit.id]))
+        self.assertContainsFloats(response, "12.35", "85.68")
+
+    def test_patient_detail_floatformat(self):
+        response = self.client.get(reverse("patients:detail", args=[self.patient.id]))
+        self.assertContainsFloats(response, "12.35", "85.68")
+
+    def test_community_roster_floatformat(self):
+        response = self.client.get(reverse("communities:detail", args=[self.community.id]))
+        self.assertContainsFloats(response, "12.35", "85.68")
+
+
+class PatientListMeasurementAndFamilyTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="Nimacabaj", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia López", community=self.community)
+        self.patient = Patient.objects.create(
+            code="NIM01",
+            name="Ana López",
+            gender="F",
+            dob=datetime.date(2021, 5, 1),
+            family=self.family,
+        )
+        for weight, height in ((8.5, 70.0), (9.0, 72.0), (9.5, 74.0)):
+            visit = Visit.objects.create(patient=self.patient)
+            Metric.objects.create(visit=visit, weight=weight, height=height, standing_or_upright=True)
+
+    def test_patient_list_shows_measurement_count(self):
+        response = self.client.get(reverse("patients:list"))
+        self.assertEqual(response.status_code, 200)
+        patient = response.context["object_list"].get(pk=self.patient.pk)
+        self.assertEqual(patient.measurement_count, 3)
+        self.assertContains(response, "Mediciones")
+        self.assertContains(response, ">3</td>", html=False)
+
+    def test_patient_list_links_to_family(self):
+        response = self.client.get(reverse("patients:list"))
+        self.assertEqual(response.status_code, 200)
+        family_url = reverse("patients:family", args=[self.family.id])
+        self.assertContains(response, family_url)
+        self.assertContains(response, "Familia López")
+
+    def test_family_detail_lists_children_and_counts(self):
+        response = self.client.get(reverse("patients:family", args=[self.family.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "anthrocalc/family_detail.html")
+        self.assertContains(response, "Ana López")
+        self.assertContains(response, reverse("patients:detail", args=[self.patient.id]))
+        self.assertContains(response, ">3</td>", html=False)
 
 class LandingPageTests(TestCase):
     def setUp(self):
@@ -44,12 +140,12 @@ class LandingPageTests(TestCase):
     def test_landing_page_status_and_template(self):
         response = self.client.get(reverse("antrobase:home"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/landing.html", [template.name for template in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/landing.html")
 
     def test_landing_page_root_url(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/landing.html", [template.name for template in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/landing.html")
 
     def test_landing_page_contains_admin_link(self):
         response = self.client.get(reverse("antrobase:home"))
@@ -61,13 +157,13 @@ class LandingPageTests(TestCase):
         self.assertContains(response, "Qachuu Aloom")
 
 
-class MetricCreationTests(TestCase):
+class MetricCreationTests(BaseAuthenticatedTestCase):
     def setUp(self):
+        super().setUp()
         self.family = Family.objects.create(responsible_name="Test Family")
         self.patient = Patient.objects.create(
             code="P001", name="Test Patient", gender="M", dob=datetime.date(2020, 1, 1), family=self.family
         )
-        self.client = Client()
 
     def test_create_metric_with_existing_visit(self):
         visit = Visit.objects.create(patient=self.patient)
@@ -111,6 +207,12 @@ class MetricCreationTests(TestCase):
         self.assertFormError(
             response.context["form"], None, "Debe seleccionar una visita existente o un paciente para crear una nueva visita."
         )
+
+    def test_create_metric_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse("metrics:new"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
 
 
 class CommunityModelAndRelationshipTests(TestCase):
@@ -169,13 +271,10 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
 
         response = self.client.get(reverse("communities:detail", args=[self.community.id]))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/community_roster.html", [t.name for t in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/community_roster.html")
         self.assertContains(response, "Anita Gómez")
         self.assertContains(response, "PAC001")
-        # In Spanish locale float may be formatted as 12,5 or 12.5
-        content = response.content.decode("utf-8")
-        self.assertTrue("12.5" in content or "12,5" in content)
-        self.assertTrue("88.0" in content or "88,0" in content or "88" in content)
+        self.assertContainsFloats(response, "12.5", "88.0")
 
     def test_community_detail_csv_export(self):
         visit = Visit.objects.create(patient=self.patient, date=timezone.now())
@@ -184,9 +283,8 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         response = self.client.get(reverse("communities:detail", args=[self.community.id]) + "?export=csv")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/csv")
-        content = response.content.decode("utf-8")
-        self.assertIn("PAC001", content)
-        self.assertIn("Anita Gómez", content)
+        self.assertContains(response, "PAC001")
+        self.assertContains(response, "Anita Gómez")
 
     def test_community_create_view(self):
         response = self.client.post(
@@ -308,7 +406,7 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
     def test_mass_visit_get_renders_formset_for_community_patients(self):
         response = self.client.get(reverse("communities:mass_visit", args=[self.community.id]))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("anthrocalc/community_mass_visit.html", [t.name for t in response.templates])
+        self.assertTemplateUsed(response, "anthrocalc/community_mass_visit.html")
         self.assertContains(response, "Niño A")
         self.assertContains(response, "Niño B")
         self.assertContains(response, "Niño C (Ausente)")
@@ -459,11 +557,11 @@ class LongformExportTests(TestCase):
         self.patient = Patient.objects.create(
             code="C1", name="Niño Test", gender="M", dob=datetime.date(2022, 1, 1), family=self.family
         )
-        self.visit1 = Visit.objects.create(patient=self.patient, date=datetime.datetime(2023, 6, 1))
+        self.visit1 = Visit.objects.create(patient=self.patient, date=timezone.make_aware(datetime.datetime(2023, 6, 1)))
         Metric.objects.create(visit=self.visit1, weight=10.0, height=75.0, standing_or_upright=False)
         EnvironmentMetric.objects.create(visit=self.visit1, dietary_diversity_score=4, breastfeeding=True)
 
-        self.visit2 = Visit.objects.create(patient=self.patient, date=datetime.datetime(2024, 8, 1))
+        self.visit2 = Visit.objects.create(patient=self.patient, date=timezone.make_aware(datetime.datetime(2024, 8, 1)))
         Metric.objects.create(visit=self.visit2, weight=13.0, height=88.0, standing_or_upright=True)
 
     def test_one_row_per_visit(self):
