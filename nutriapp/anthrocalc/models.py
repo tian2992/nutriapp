@@ -141,11 +141,11 @@ class HouseholdStatus(models.Model):
     history is lost.
     """
 
-    INCOME_PROXY_CHOICES = [
+    INCOME_PROXY_CHOICES = (
         ("low", "Bajo"),
         ("medium", "Medio"),
         ("high", "Alto"),
-    ]
+    )
 
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="statuses", verbose_name="Familia")
     recorded_at = models.DateField(
@@ -184,12 +184,12 @@ class HouseholdStatus(models.Model):
 
 
 class Patient(models.Model):
-    MATERNAL_EDUCATION_CHOICES = [
+    MATERNAL_EDUCATION_CHOICES = (
         ("none", "Ninguna"),
         ("primary", "Primaria"),
         ("secondary", "Secundaria"),
         ("higher", "Superior"),
-    ]
+    )
     # Real sexes for z-scores; X is the placeholder for unknown/unset.
     GENDER_CHOICES = [
         ("M", "Masculino"),
