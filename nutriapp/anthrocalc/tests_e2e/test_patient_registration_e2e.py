@@ -26,7 +26,6 @@ class PatientRegistrationE2ETests(PlaywrightTestCase):
         self.login_as_field_agent()
         self.page.goto(f"{self.live_server_url}/patient/new")
 
-        self.page.fill("#id_code", "E2E-NEW-01")
         self.page.fill("#id_name", "Carla Nueva")
         self.page.select_option("#id_gender", "F")
         self.page.fill("#id_dob", "2023-03-10")
@@ -36,8 +35,9 @@ class PatientRegistrationE2ETests(PlaywrightTestCase):
         self.page.click("form button[type=submit], form input[type=submit]")
         self.page.wait_for_load_state("networkidle")
 
-        patient = Patient.objects.get(code="E2E-NEW-01")
-        self.assertEqual(patient.name, "Carla Nueva")
+        patient = Patient.objects.get(name="Carla Nueva")
+        # Default municipio Rabinal + community "Comunidad..." → QARABCOM001
+        self.assertEqual(patient.code, "QARABCOM001")
         self.assertIsNotNone(patient.family)
         self.assertEqual(patient.family.responsible_name, "Familia Nueva E2E")
         self.assertEqual(patient.family.community.name, "Comunidad Nueva E2E")
