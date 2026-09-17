@@ -28,10 +28,7 @@ class PatientRegistrationE2ETests(PlaywrightTestCase):
 
         self.page.fill("#id_code", "E2E-NEW-01")
         self.page.fill("#id_name", "Carla Nueva")
-        # Free-text today (models.py:200 has no `choices` yet - see
-        # validar_sexo_y_fecha_nacimiento.md). Once that spec lands this
-        # becomes a <select> and this line needs `select_option` instead.
-        self.page.fill("#id_gender", "F")
+        self.page.select_option("#id_gender", "F")
         self.page.fill("#id_dob", "2023-03-10")
         self.page.fill("#id_new_community_name", "Comunidad Nueva E2E")
         self.page.fill("#id_new_family_name", "Familia Nueva E2E")

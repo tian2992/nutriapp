@@ -190,14 +190,24 @@ class Patient(models.Model):
         ("secondary", "Secundaria"),
         ("higher", "Superior"),
     ]
+    # Real sexes for z-scores; X is the placeholder for unknown/unset.
+    GENDER_CHOICES = [
+        ("M", "Masculino"),
+        ("F", "Femenino"),
+    ]
+    GENDER_PLACEHOLDER = "X"
 
     id = models.AutoField(primary_key=True)
     # Full Name
     code = models.CharField(max_length=50, verbose_name="Código")
     name = models.CharField(max_length=250, verbose_name="Nombre")
 
-    # M or F
-    gender = models.CharField(max_length=1, verbose_name="Sexo")
+    gender = models.CharField(
+        max_length=1,
+        choices=[(GENDER_PLACEHOLDER, GENDER_PLACEHOLDER), *GENDER_CHOICES],
+        default=GENDER_PLACEHOLDER,
+        verbose_name="Sexo",
+    )
 
     # Day of Birth
     dob = models.DateField(verbose_name="Fecha de Nacimiento")
