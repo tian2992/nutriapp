@@ -265,6 +265,9 @@ class MultipleVisit(models.Model):
         verbose_name_plural = "Jornadas / Visitas Masivas"
         ordering = ["-date"]
 
+    def get_absolute_url(self):
+        return reverse("communities:jornada", args=[self.community_id, self.id])
+
     def __str__(self):
         return f"Jornada {self.community.name} - {self.date.strftime('%Y-%m-%d')}"
 
