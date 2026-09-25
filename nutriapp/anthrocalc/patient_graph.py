@@ -1,20 +1,17 @@
 import io
 import datetime
-from decimal import Decimal
-import django.http
-from django.shortcuts import get_object_or_404
 import matplotlib
 matplotlib.use("Agg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from .models import Patient, Visit, Metric
+from .models import Patient, Visit
 from .who_reference import reference_band, normalize_sex
-from .person_utils import calculate_age_at_date, fetch_metrics_from_visits
+from .person_utils import fetch_metrics_from_visits
 
 
 def render_growth_chart(
-    series_list: list[dict],
+    series_list: list[dict] | None = None,
     title: str = "",
     xlabel: str = "",
     ylabel: str = "",
@@ -29,6 +26,8 @@ def render_growth_chart(
     - 'ys': list[float]
     - 'style': dict (optional styling kwargs: color, linestyle, linewidth, marker, alpha, etc.)
     """
+    if series_list is None:
+        series_list = []
     fig = Figure(figsize=(8, 4.8), dpi=100)
     ax = fig.add_subplot(111)
 
@@ -49,13 +48,15 @@ def render_growth_chart(
         ax.set_ylabel(ylabel, fontsize=10)
 
     ax.grid(True, linestyle=":", alpha=0.6)
-    ax.legend(loc="best", fontsize=8, framealpha=0.85)
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        ax.legend(loc="best", fontsize=8, framealpha=0.85)
     fig.tight_layout()
     return fig
 
 
 def render_chart_to_bytes(
-    series_list: list[dict],
+    series_list: list[dict] | None = None,
     title: str = "",
     xlabel: str = "",
     ylabel: str = "",
@@ -66,6 +67,24 @@ def render_chart_to_bytes(
     canvas = FigureCanvas(fig)
     canvas.print_png(buf)
     return buf.getvalue()
+
+
+def render_blank_chart(
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+) -> Figure:
+    """Renders a blank chart figure."""
+    return render_growth_chart([], title=title, xlabel=xlabel, ylabel=ylabel)
+
+
+def render_blank_chart_to_bytes(
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+) -> bytes:
+    """Renders a blank chart and returns PNG image bytes."""
+    return render_chart_to_bytes([], title=title, xlabel=xlabel, ylabel=ylabel)
 
 
 def compute_patient_growth_series(
@@ -276,42 +295,12 @@ def math_ceil(val: float) -> int:
     return math.ceil(val)
 
 
-def graph_for_person(request):
-    """
-    HTTP view returning personal growth chart PNG for a given person/patient.
-    Accepts GET parameters:
-    - person_id or patient_id (int)
-    - indicator (str: 'hfa', 'wfa', 'wfh' / 'whz', default 'hfa')
-    """
-    person_id = request.GET.get("person_id") or request.GET.get("patient_id")
-    if not person_id:
-        return django.http.HttpResponseBadRequest("person_id parameter is required")
-
-    try:
-        person_id = int(person_id)
-    except ValueError:
-        return django.http.HttpResponseBadRequest("Invalid person_id")
-
-    patient = get_object_or_404(Patient, id=person_id)
-    indicator = request.GET.get("indicator", "hfa")
-
-    chart_data = compute_patient_growth_series(patient, indicator=indicator)
-    image_bytes = render_chart_to_bytes(
-        series_list=chart_data["series"],
-        title=chart_data["title"],
-        xlabel=chart_data["xlabel"],
-        ylabel=chart_data["ylabel"],
-    )
-
-    return django.http.HttpResponse(image_bytes, content_type="image/png")
-
-
-def simple(request):
-    """Placeholder simple chart for testing."""
-    buf = io.BytesIO()
-    fig = Figure()
-    ax = fig.add_subplot(111)
-    ax.plot([0, 1, 2], [0, 1, 4], "-")
-    canvas = FigureCanvas(fig)
-    canvas.print_png(buf)
-    return django.http.HttpResponse(buf.getvalue(), content_type="image/png")
+__all__ = [
+    "render_growth_chart",
+    "render_chart_to_bytes",
+    "render_blank_chart",
+    "render_blank_chart_to_bytes",
+    "compute_patient_growth_series",
+    "compute_group_growth_series",
+    "math_ceil",
+]

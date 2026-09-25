@@ -793,6 +793,36 @@ class GrowthChartTests(BaseAuthenticatedTestCase):
         self.assertIsInstance(png_bytes, bytes)
         self.assertTrue(png_bytes.startswith(b"\x89PNG"))
 
+    def test_render_blank_chart(self):
+        from .patient_graph import render_blank_chart, render_blank_chart_to_bytes
+
+        fig = render_blank_chart(title="Blank Chart", xlabel="X", ylabel="Y")
+        self.assertIsNotNone(fig)
+        self.assertEqual(len(fig.axes), 1)
+
+        png_bytes = render_blank_chart_to_bytes()
+        self.assertIsInstance(png_bytes, bytes)
+        self.assertTrue(png_bytes.startswith(b"\x89PNG"))
+
+    def test_simple_view_returns_blank_chart(self):
+        res = self.client.get(reverse("antrobase:simple_chart"))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "image/png")
+        self.assertTrue(res.content.startswith(b"\x89PNG"))
+
+    def test_graph_views_separation(self):
+        from .graph_views import graph_for_person, simple
+        import anthrocalc.patient_graph as pg
+
+        # patient_graph handles graph building
+        self.assertTrue(callable(pg.render_growth_chart))
+        self.assertTrue(callable(pg.render_blank_chart))
+        self.assertTrue(callable(pg.render_blank_chart_to_bytes))
+        self.assertTrue(callable(pg.compute_patient_growth_series))
+        # graph_views handles HTTP request views
+        self.assertTrue(callable(graph_for_person))
+        self.assertTrue(callable(simple))
+
     def test_graph_for_person_view(self):
         # Without person_id -> 400
         res = self.client.get(reverse("antrobase:personal_progress"))

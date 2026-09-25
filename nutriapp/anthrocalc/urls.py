@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .patient_graph import simple, graph_for_person
+from .graph_views import simple, graph_for_person
 from .views import LandingPageView
 
 
