@@ -661,3 +661,157 @@ class CsrfSettingsTests(TestCase):
         from django.conf import settings
         self.assertTrue(hasattr(settings, "CSRF_TRUSTED_ORIGINS"))
         self.assertIsInstance(settings.CSRF_TRUSTED_ORIGINS, list)
+
+
+class WhoReferenceTests(TestCase):
+    def test_sex_normalization(self):
+        from .who_reference import normalize_sex
+        self.assertEqual(normalize_sex("male"), "male")
+        self.assertEqual(normalize_sex("M"), "male")
+        self.assertEqual(normalize_sex("masculino"), "male")
+        self.assertEqual(normalize_sex("female"), "female")
+        self.assertEqual(normalize_sex("F"), "female")
+        self.assertEqual(normalize_sex("femenino"), "female")
+        with self.assertRaises(ValueError):
+            normalize_sex("invalid")
+
+    def test_z_zero_equals_median_m(self):
+        from .who_reference import reference_band, get_lms_for_point
+        # Test HAZ at 12 months for male
+        lms_haz = get_lms_for_point("hfa", "male", 12)
+        band_haz = reference_band("hfa", "male", [12])[0]
+        self.assertAlmostEqual(band_haz["0"], float(lms_haz["m"]), places=4)
+
+        # Test WAZ at 24 months for female
+        lms_waz = get_lms_for_point("wfa", "female", 24)
+        band_waz = reference_band("wfa", "female", [24])[0]
+        self.assertAlmostEqual(band_waz["0"], float(lms_waz["m"]), places=4)
+
+        # Test WHZ at 80cm for male
+        lms_whz = get_lms_for_point("wfh", "male", 80.0)
+        band_whz = reference_band("wfh", "male", [80.0])[0]
+        self.assertAlmostEqual(band_whz["0"], float(lms_whz["m"]), places=4)
+
+        # Test WFL at 60cm for female
+        lms_wfl = get_lms_for_point("wfl", "female", 60.0)
+        band_wfl = reference_band("wfl", "female", [60.0])[0]
+        self.assertAlmostEqual(band_wfl["0"], float(lms_wfl["m"]), places=4)
+
+    def test_roundtrip_against_pygrowup(self):
+        import pygrowup
+        from .who_reference import reference_band
+
+        # 1. Height-for-age (HAZ) at 12 months (male)
+        obs_haz = pygrowup.Observation(sex="male", age_in_months=12)
+        band_haz = reference_band("hfa", "male", [12])[0]
+        for z_key, expected_z in [("-2SD", -2.0), ("-1SD", -1.0), ("0", 0.0), ("+1SD", 1.0), ("+2SD", 2.0)]:
+            val = band_haz[z_key]
+            calc_z = float(obs_haz.lhfa(val, recumbent=False, auto_adjust=False))
+            self.assertAlmostEqual(calc_z, expected_z, delta=0.05)
+
+        # 2. Weight-for-age (WAZ) at 18 months (female)
+        obs_waz = pygrowup.Observation(sex="female", age_in_months=18)
+        band_waz = reference_band("wfa", "female", [18])[0]
+        for z_key, expected_z in [("-2SD", -2.0), ("-1SD", -1.0), ("0", 0.0), ("+1SD", 1.0), ("+2SD", 2.0)]:
+            val = band_waz[z_key]
+            calc_z = float(obs_waz.wfa(val))
+            self.assertAlmostEqual(calc_z, expected_z, delta=0.05)
+
+        # 3. Weight-for-height (WHZ) at 85cm (male)
+        obs_whz = pygrowup.Observation(sex="male", age_in_months=24)
+        band_whz = reference_band("wfh", "male", [85.0])[0]
+        for z_key, expected_z in [("-2SD", -2.0), ("-1SD", -1.0), ("0", 0.0), ("+1SD", 1.0), ("+2SD", 2.0)]:
+            val = band_whz[z_key]
+            calc_z = float(obs_whz.wfh(val, 85.0))
+            self.assertAlmostEqual(calc_z, expected_z, delta=0.05)
+
+
+class GrowthChartTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="Chicacao", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia Perez", community=self.community)
+        self.patient = Patient.objects.create(
+            code="CHI01",
+            name="Carlos Perez",
+            gender="M",
+            dob=datetime.date(2022, 1, 1),
+            family=self.family,
+        )
+        # Create 3 visits with metrics
+        self.v1 = Visit.objects.create(
+            patient=self.patient,
+            date=timezone.make_aware(datetime.datetime(2022, 7, 1)),
+        )
+        Metric.objects.create(visit=self.v1, weight=7.5, height=67.0, standing_or_upright=False)
+
+        self.v2 = Visit.objects.create(
+            patient=self.patient,
+            date=timezone.make_aware(datetime.datetime(2023, 1, 1)),
+        )
+        Metric.objects.create(visit=self.v2, weight=9.5, height=75.0, standing_or_upright=True)
+
+        self.v3 = Visit.objects.create(
+            patient=self.patient,
+            date=timezone.make_aware(datetime.datetime(2023, 7, 1)),
+        )
+        Metric.objects.create(visit=self.v3, weight=11.0, height=84.0, standing_or_upright=True)
+
+    def test_compute_patient_growth_series_decoupled(self):
+        from .patient_graph import compute_patient_growth_series
+
+        for ind in ("hfa", "wfa", "wfh"):
+            data = compute_patient_growth_series(self.patient, indicator=ind)
+            self.assertIn("series", data)
+            self.assertIn("title", data)
+            self.assertIn("xlabel", data)
+            self.assertIn("ylabel", data)
+
+            labels = [s["label"] for s in data["series"]]
+            self.assertIn("+2 SD", labels)
+            self.assertIn("+1 SD", labels)
+            self.assertIn("0 (Mediana OMS)", labels)
+            self.assertIn("-1 SD", labels)
+            self.assertIn("-2 SD", labels)
+            self.assertTrue(any("Mediciones" in lbl for lbl in labels))
+
+    def test_compute_group_growth_series_stub(self):
+        from .patient_graph import compute_group_growth_series
+
+        group_data = compute_group_growth_series([self.patient], indicator="hfa", group_name="Comunidad Test")
+        self.assertIn("series", group_data)
+        self.assertIn("Crecimiento Grupal", group_data["title"])
+        self.assertTrue(len(group_data["series"]) >= 4)
+
+    def test_render_chart_to_bytes(self):
+        from .patient_graph import render_chart_to_bytes
+
+        series_list = [
+            {"label": "Test Series", "xs": [0, 1, 2], "ys": [10, 20, 30], "style": {"color": "blue"}}
+        ]
+        png_bytes = render_chart_to_bytes(series_list, title="Test Chart", xlabel="X", ylabel="Y")
+        self.assertIsInstance(png_bytes, bytes)
+        self.assertTrue(png_bytes.startswith(b"\x89PNG"))
+
+    def test_graph_for_person_view(self):
+        # Without person_id -> 400
+        res = self.client.get(reverse("antrobase:personal_progress"))
+        self.assertEqual(res.status_code, 400)
+
+        # With person_id for each indicator -> 200 image/png
+        for ind in ("hfa", "wfa", "wfh"):
+            url = f"{reverse('antrobase:personal_progress')}?person_id={self.patient.id}&indicator={ind}"
+            res = self.client.get(url)
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res["Content-Type"], "image/png")
+            self.assertTrue(res.content.startswith(b"\x89PNG"))
+
+    def test_patient_detail_template_shows_growth_charts(self):
+        url = reverse("patients:detail", args=[self.patient.id])
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        content = res.content.decode("utf-8")
+        self.assertIn("Gráficas de Crecimiento", content)
+        self.assertIn(f"personal_progress.png?person_id={self.patient.id}&indicator=hfa", content)
+        self.assertIn(f"personal_progress.png?person_id={self.patient.id}&indicator=wfa", content)
+        self.assertIn(f"personal_progress.png?person_id={self.patient.id}&indicator=wfh", content)

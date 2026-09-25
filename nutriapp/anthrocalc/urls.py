@@ -9,6 +9,6 @@ app_name = "nutriapp"
 #
 urlpatterns = [
     path("", LandingPageView.as_view(), name="home"),
-    path("charts/simple.png", simple),
-    path("charts/personal_progress.png", graph_for_person),
+    path("charts/simple.png", simple, name="simple_chart"),
+    path("charts/personal_progress.png", graph_for_person, name="personal_progress"),
 ]
