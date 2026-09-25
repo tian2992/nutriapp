@@ -836,6 +836,12 @@ class GrowthChartTests(BaseAuthenticatedTestCase):
             self.assertEqual(res["Content-Type"], "image/png")
             self.assertTrue(res.content.startswith(b"\x89PNG"))
 
+    def test_graph_for_person_view_requires_login(self):
+        self.client.logout()
+        url = f"{reverse('antrobase:personal_progress')}?person_id={self.patient.id}&indicator=hfa"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 302)
+
     def test_patient_detail_template_shows_growth_charts(self):
         url = reverse("patients:detail", args=[self.patient.id])
         res = self.client.get(url)

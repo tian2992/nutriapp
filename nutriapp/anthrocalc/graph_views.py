@@ -1,4 +1,5 @@
 import django.http
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 
 from .models import Patient
@@ -9,6 +10,7 @@ from .patient_graph import (
 )
 
 
+@login_required
 def graph_for_person(request):
     """
     HTTP view returning personal growth chart PNG for a given person/patient.
