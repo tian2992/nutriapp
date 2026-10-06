@@ -287,6 +287,14 @@ class Visit(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     notes = models.TextField(verbose_name="Notas", null=True, blank=True)
     multiple_visit = models.ForeignKey(MultipleVisit, on_delete=models.CASCADE, null=True, blank=True)
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="entered_visits",
+        verbose_name="Registrado por",
+    )
 
     def get_absolute_url(self):
         return reverse("visits:detail", args=[str(self.id)])

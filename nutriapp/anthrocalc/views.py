@@ -244,6 +244,11 @@ class VisitCreation(CreateView):
             initial["patient"] = self.request.GET["patient"]
         return initial
 
+    def form_valid(self, form):
+        if self.request.user.is_authenticated:
+            form.instance.entered_by = self.request.user
+        return super().form_valid(form)
+
 
 @method_decorator(login_required, name="dispatch")
 class VisitUpdate(UpdateView):
@@ -313,9 +318,11 @@ class MetricCreation(CreateView):
     def form_valid(self, form):
         if not form.cleaned_data.get("visit"):
             patient = form.cleaned_data.get("patient")
+            entered_by = self.request.user if self.request.user.is_authenticated else None
             visit = Visit.objects.create(
                 patient=patient,
                 multiple_visit=form.cleaned_data.get("multiple_visit"),
+                entered_by=entered_by,
             )
             form.instance.visit = visit
         return super().form_valid(form)
@@ -657,7 +664,7 @@ class JornadaDetail(DetailView):
         context = super().get_context_data(**kwargs)
         visits = (
             Visit.objects.filter(multiple_visit=self.object)
-            .select_related("patient", "metric")
+            .select_related("patient", "metric", "entered_by")
             .order_by("patient__name")
         )
         context["visits"] = visits
@@ -749,6 +756,7 @@ class CommunityMassVisit(View):
                     pass
 
             created_count = 0
+            entered_by = request.user if request.user.is_authenticated else None
             with transaction.atomic():
                 multiple_visit = MultipleVisit.objects.create(
                     community=community,
@@ -776,6 +784,7 @@ class CommunityMassVisit(View):
                             date=jornada_datetime,
                             multiple_visit=multiple_visit,
                             notes=row_notes if row_notes else None,
+                            entered_by=entered_by,
                         )
                         metric = Metric(
                             visit=visit,

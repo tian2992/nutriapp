@@ -46,8 +46,9 @@ class EnvironmentMetricInline(admin.TabularInline):
 
 @admin.register(Visit)
 class VisitAdmin(admin.ModelAdmin):
-    list_display = ("patient", "date")
+    list_display = ("patient", "date", "entered_by")
     list_filter = ("date", "patient")
+    readonly_fields = ("entered_by",)
     inlines = [MetricInline, EnvironmentMetricInline]
 
 

@@ -641,6 +641,78 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
         self.assertTrue(form4.has_data())
 
 
+class VisitEnteredByTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="Xucaneb", municipality="Rabinal")
+        self.family = Family.objects.create(responsible_name="Familia Entered", community=self.community)
+        self.patient = Patient.objects.create(
+            code="XE01",
+            name="Niño Entered",
+            gender="M",
+            dob=datetime.date(2022, 3, 1),
+            family=self.family,
+        )
+
+    def test_visit_creation_sets_entered_by_to_logged_in_user(self):
+        response = self.client.post(
+            reverse("visits:new"),
+            {
+                "patient": self.patient.id,
+                "date": "05/10/2026 12:00:00",
+                "notes": "",
+                "multiple_visit": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        visit = Visit.objects.get(patient=self.patient)
+        self.assertEqual(visit.entered_by, self.user)
+
+    def test_metric_creation_sets_entered_by_when_it_creates_a_visit(self):
+        response = self.client.post(
+            reverse("metrics:new"),
+            {
+                "patient": self.patient.id,
+                "weight": 11.0,
+                "height": 80.0,
+                "standing_or_upright": True,
+                "muac": 13.0,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        visit = Visit.objects.get(patient=self.patient)
+        self.assertEqual(visit.entered_by, self.user)
+
+    def test_mass_visit_sets_entered_by_and_jornada_detail_shows_username(self):
+        data = {
+            "date": "2026-08-17",
+            "responsible_name": "Promotor Test",
+            "notes": "Jornada con autor",
+            "rows-TOTAL_FORMS": "1",
+            "rows-INITIAL_FORMS": "1",
+            "rows-MIN_NUM_FORMS": "0",
+            "rows-MAX_NUM_FORMS": "1000",
+            "rows-0-patient_id": str(self.patient.id),
+            "rows-0-weight": "14.2",
+            "rows-0-height": "95.5",
+            "rows-0-standing_or_upright": "True",
+            "rows-0-muac": "14.5",
+            "rows-0-edema": False,
+            "rows-0-notes": "",
+        }
+        response = self.client.post(reverse("communities:mass_visit", args=[self.community.id]), data)
+        self.assertEqual(response.status_code, 302)
+
+        visit = Visit.objects.get(patient=self.patient)
+        self.assertEqual(visit.entered_by, self.user)
+
+        detail = self.client.get(
+            reverse("communities:jornada", args=[self.community.id, visit.multiple_visit_id])
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, self.user.username)
+
+
 class NutritionalStatusHelperTests(TestCase):
     def test_status_for_none(self):
         status = get_nutritional_status(None)
