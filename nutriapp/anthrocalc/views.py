@@ -24,6 +24,7 @@ from .forms import (
     MassMeasurementRowForm,
     MetricForm,
     PatientForm,
+    VisitForm,
 )
 from .models import *
 from .person_utils import (
@@ -231,12 +232,8 @@ class VisitDetail(DetailView):
 @method_decorator(login_required, name="dispatch")
 class VisitCreation(CreateView):
     model = Visit
-    metric = Metric
+    form_class = VisitForm
     success_url = reverse_lazy("visits:list")  ## TODO: redirect to new metric
-    # success_url = reverse_lazy('metrics:newvm')
-    # +"?visit={{visit.id}}"
-    # ", args=metric.id)
-    fields = "__all__"
 
     def get_success_url(self):
         return reverse("visits:detail", args=(self.object.id,))
@@ -251,8 +248,8 @@ class VisitCreation(CreateView):
 @method_decorator(login_required, name="dispatch")
 class VisitUpdate(UpdateView):
     model = Visit
+    form_class = VisitForm
     success_url = reverse_lazy("visits:list")
-    fields = ["patient", "date"]
 
 
 @method_decorator(login_required, name="dispatch")
@@ -316,7 +313,10 @@ class MetricCreation(CreateView):
     def form_valid(self, form):
         if not form.cleaned_data.get("visit"):
             patient = form.cleaned_data.get("patient")
-            visit = Visit.objects.create(patient=patient)
+            visit = Visit.objects.create(
+                patient=patient,
+                multiple_visit=form.cleaned_data.get("multiple_visit"),
+            )
             form.instance.visit = visit
         return super().form_valid(form)
 

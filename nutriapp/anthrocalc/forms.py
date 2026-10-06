@@ -1,7 +1,38 @@
 import datetime
 from django import forms
 from django.forms import formset_factory
-from .models import Metric, Patient, Visit, Family, Community
+from .models import Metric, MultipleVisit, Patient, Visit, Family, Community
+
+
+def jornadas_for_patient(patient):
+    """Jornadas (MultipleVisit) belonging to the patient's community only."""
+    if patient is None:
+        return MultipleVisit.objects.none()
+    community = getattr(patient, "community", None)
+    if community is None:
+        return MultipleVisit.objects.none()
+    return MultipleVisit.objects.filter(community=community).order_by("-date")
+
+
+def _resolve_patient(*, data=None, initial=None, instance=None, patient_field="patient"):
+    """Best-effort patient from POST data, initial, or a model instance."""
+    raw = None
+    if data is not None:
+        raw = data.get(patient_field)
+    if not raw and initial:
+        raw = initial.get(patient_field)
+    if raw:
+        if isinstance(raw, Patient):
+            return raw
+        try:
+            return Patient.objects.select_related("family__community").get(pk=raw)
+        except (Patient.DoesNotExist, TypeError, ValueError):
+            return None
+    if instance is not None and getattr(instance, "pk", None):
+        related = getattr(instance, patient_field, None)
+        if isinstance(related, Patient):
+            return related
+    return None
 
 
 class CommunityForm(forms.ModelForm):
@@ -117,9 +148,48 @@ class PatientForm(forms.ModelForm):
         return instance
 
 
+class VisitForm(forms.ModelForm):
+    class Meta:
+        model = Visit
+        fields = ["patient", "date", "notes", "multiple_visit"]
+        labels = {
+            "multiple_visit": "Jornada",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["multiple_visit"].required = False
+        self.fields["notes"].required = False
+        patient = _resolve_patient(
+            data=self.data or None,
+            initial=self.initial,
+            instance=self.instance if self.instance.pk else None,
+        )
+        self.fields["multiple_visit"].queryset = jornadas_for_patient(patient)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        patient = cleaned_data.get("patient")
+        multiple_visit = cleaned_data.get("multiple_visit")
+        if multiple_visit and patient:
+            community = patient.community
+            if community is None or multiple_visit.community_id != community.id:
+                self.add_error(
+                    "multiple_visit",
+                    "La jornada debe pertenecer a la comunidad del paciente.",
+                )
+        return cleaned_data
+
+
 class MetricForm(forms.ModelForm):
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.all(), required=False, label="Paciente (para crear visita implícita)"
+    )
+    multiple_visit = forms.ModelChoiceField(
+        queryset=MultipleVisit.objects.none(),
+        required=False,
+        label="Jornada",
+        help_text="Solo jornadas de la comunidad del paciente.",
     )
 
     class Meta:
@@ -127,6 +197,7 @@ class MetricForm(forms.ModelForm):
         fields = [
             "visit",
             "patient",
+            "multiple_visit",
             "weight",
             "height",
             "standing_or_upright",
@@ -153,15 +224,57 @@ class MetricForm(forms.ModelForm):
         # but we might want to make visit optional if patient is provided.
         self.fields["visit"].required = False
 
+        patient = _resolve_patient(
+            data=self.data or None,
+            initial=self.initial,
+            instance=None,
+        )
+        if patient is None and self.data.get("visit"):
+            try:
+                visit = Visit.objects.select_related("patient__family__community").get(
+                    pk=self.data.get("visit")
+                )
+                patient = visit.patient
+            except (Visit.DoesNotExist, TypeError, ValueError):
+                pass
+        elif patient is None and self.initial.get("visit"):
+            visit = self.initial["visit"]
+            if isinstance(visit, Visit):
+                patient = visit.patient
+            else:
+                try:
+                    visit = Visit.objects.select_related("patient__family__community").get(pk=visit)
+                    patient = visit.patient
+                except (Visit.DoesNotExist, TypeError, ValueError):
+                    pass
+
+        # Jornada only applies when creating an implicit visit for a patient.
+        if self.initial.get("visit") or (self.data and self.data.get("visit")):
+            self.fields["multiple_visit"].queryset = MultipleVisit.objects.none()
+            self.fields["multiple_visit"].widget = forms.HiddenInput()
+        else:
+            self.fields["multiple_visit"].queryset = jornadas_for_patient(patient)
+
     def clean(self):
         cleaned_data = super().clean()
         visit = cleaned_data.get("visit")
         patient = cleaned_data.get("patient")
+        multiple_visit = cleaned_data.get("multiple_visit")
 
         if not visit and not patient:
             raise forms.ValidationError(
                 "Debe seleccionar una visita existente o un paciente para crear una nueva visita."
             )
+
+        if visit:
+            cleaned_data["multiple_visit"] = None
+        elif multiple_visit and patient:
+            community = patient.community
+            if community is None or multiple_visit.community_id != community.id:
+                self.add_error(
+                    "multiple_visit",
+                    "La jornada debe pertenecer a la comunidad del paciente.",
+                )
         return cleaned_data
 
 

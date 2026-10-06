@@ -214,6 +214,73 @@ class MetricCreationTests(BaseAuthenticatedTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/login/", response["Location"])
 
+    def test_metric_form_jornada_filtered_to_patient_community(self):
+        community_a = Community.objects.create(name="Com A", municipality="Rabinal")
+        community_b = Community.objects.create(name="Com B", municipality="Rabinal")
+        self.family.community = community_a
+        self.family.save()
+
+        mv_a = MultipleVisit.objects.create(community=community_a, date=timezone.now(), responsible_name="A")
+        mv_b = MultipleVisit.objects.create(community=community_b, date=timezone.now(), responsible_name="B")
+
+        response = self.client.get(reverse("metrics:new") + f"?patient={self.patient.id}")
+        self.assertEqual(response.status_code, 200)
+        jornada_qs = response.context["form"].fields["multiple_visit"].queryset
+        self.assertIn(mv_a, jornada_qs)
+        self.assertNotIn(mv_b, jornada_qs)
+
+        data = {
+            "patient": self.patient.id,
+            "multiple_visit": mv_a.id,
+            "weight": 11.0,
+            "height": 80.0,
+            "standing_or_upright": True,
+            "muac": 13.0,
+        }
+        response = self.client.post(reverse("metrics:new"), data)
+        self.assertEqual(response.status_code, 302)
+        visit = Visit.objects.get(patient=self.patient)
+        self.assertEqual(visit.multiple_visit_id, mv_a.id)
+
+    def test_metric_form_rejects_jornada_from_other_community(self):
+        community_a = Community.objects.create(name="Com A", municipality="Rabinal")
+        community_b = Community.objects.create(name="Com B", municipality="Rabinal")
+        self.family.community = community_a
+        self.family.save()
+        mv_b = MultipleVisit.objects.create(community=community_b, date=timezone.now())
+
+        data = {
+            "patient": self.patient.id,
+            "multiple_visit": mv_b.id,
+            "weight": 11.0,
+            "height": 80.0,
+            "standing_or_upright": True,
+        }
+        response = self.client.post(reverse("metrics:new"), data)
+        self.assertEqual(response.status_code, 200)
+        # Invalid choice is rejected by ModelChoiceField queryset filtering.
+        self.assertFalse(Visit.objects.filter(patient=self.patient).exists())
+
+
+class VisitJornadaFilterTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community_a = Community.objects.create(name="Vis Com A")
+        self.community_b = Community.objects.create(name="Vis Com B")
+        self.family = Family.objects.create(responsible_name="Fam A", community=self.community_a)
+        self.patient = Patient.objects.create(
+            code="VJ001", name="Niño A", gender="M", dob=datetime.date(2021, 1, 1), family=self.family
+        )
+        self.mv_a = MultipleVisit.objects.create(community=self.community_a, date=timezone.now())
+        self.mv_b = MultipleVisit.objects.create(community=self.community_b, date=timezone.now())
+
+    def test_visit_form_jornada_filtered_to_patient_community(self):
+        response = self.client.get(reverse("visits:new") + f"?patient={self.patient.id}")
+        self.assertEqual(response.status_code, 200)
+        jornada_qs = response.context["form"].fields["multiple_visit"].queryset
+        self.assertIn(self.mv_a, jornada_qs)
+        self.assertNotIn(self.mv_b, jornada_qs)
+
 
 class CommunityModelAndRelationshipTests(TestCase):
     def setUp(self):
@@ -319,6 +386,28 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         response = self.client.post(reverse("communities:delete", args=[self.community.id]))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Community.objects.filter(id=self.community.id).exists())
+
+    def test_historial_links_to_jornada_detail(self):
+        mv = MultipleVisit.objects.create(
+            community=self.community,
+            date=timezone.now(),
+            responsible_name="Ana Promotora",
+            notes="Jornada de prueba",
+        )
+        visit = Visit.objects.create(patient=self.patient, date=timezone.now(), multiple_visit=mv)
+        Metric.objects.create(visit=visit, weight=11.2, height=82.0, standing_or_upright=True)
+
+        roster = self.client.get(reverse("communities:detail", args=[self.community.id]))
+        self.assertEqual(roster.status_code, 200)
+        jornada_url = reverse("communities:jornada", args=[self.community.id, mv.id])
+        self.assertContains(roster, jornada_url)
+
+        detail = self.client.get(jornada_url)
+        self.assertEqual(detail.status_code, 200)
+        self.assertTemplateUsed(detail, "anthrocalc/jornada_detail.html")
+        self.assertContains(detail, "Anita Gómez")
+        self.assertContains(detail, "Ana Promotora")
+        self.assertContainsFloats(detail, "11.2", "82.0")
 
 
 class CommunityFilteringTests(BaseAuthenticatedTestCase):
