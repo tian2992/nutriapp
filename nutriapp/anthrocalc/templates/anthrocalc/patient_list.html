@@ -7,7 +7,7 @@
         <p class="text-muted mb-0">{% translate "Consulta los datos básicos de cada niño y accede a su historial de visitas." %}</p>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-secondary" role="button" href="?{% if selected_community %}community={{ selected_community }}&{% endif %}export=csv">{% translate "Exportar CSV" %}</a>
+        <a class="btn btn-secondary" role="button" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if selected_community %}community={{ selected_community }}&{% endif %}export=csv">{% translate "Exportar CSV" %}</a>
         <a class="btn btn-primary" role="button" href="{% url 'patients:new' %}{% if selected_community %}?community={{ selected_community }}{% endif %}">{% translate "Agregar nuevo niño" %}</a>
     </div>
 </div>
@@ -15,6 +15,12 @@
 <div class="card mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label for="patientSearch" class="col-form-label fw-bold">{% translate "Buscar:" %}</label>
+            </div>
+            <div class="col-auto">
+                <input type="search" name="q" id="patientSearch" class="form-control form-control-sm" value="{{ q }}" placeholder="{% translate 'Nombre o código' %}">
+            </div>
             <div class="col-auto">
                 <label for="communityFilter" class="col-form-label fw-bold">{% translate "Filtrar por Comunidad:" %}</label>
             </div>
@@ -26,7 +32,10 @@
                     {% endfor %}
                 </select>
             </div>
-            {% if selected_community %}
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">{% translate "Buscar" %}</button>
+            </div>
+            {% if selected_community or q %}
             <div class="col-auto">
                 <a href="{% url 'patients:list' %}" class="btn btn-sm btn-outline-secondary">{% translate "Limpiar filtro" %}</a>
             </div>

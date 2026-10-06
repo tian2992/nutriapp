@@ -2,9 +2,58 @@
 {% block content %}
 {% load crispy_forms_tags %}
 {% load i18n %}
-<form method="post">
+
+<div class="mb-3">
+    <p class="mb-2">Antes de registrar, busque por nombre o código por si el niño ya está en el sistema.</p>
+    <button
+        type="submit"
+        id="patient-search-submit"
+        class="btn btn-outline-secondary"
+        form="patient-create-form"
+        formmethod="get"
+        formnovalidate
+    >Buscar</button>
+</div>
+
+{% if patient_matches %}
+<div class="alert alert-warning" role="status">
+    <p class="mb-2"><strong>¿Es uno de estos?</strong></p>
+    <ul class="mb-0">
+        {% for patient in patient_matches %}
+        <li>
+            <a href="{% url 'patients:detail' patient.id %}">{{ patient.name }}</a>
+            {% if patient.code %} ({{ patient.code }}){% endif %}
+            — Comunidad:
+            {% if patient.family and patient.family.community %}{{ patient.family.community.name }}{% else %}sin comunidad{% endif %},
+            Familia:
+            {% if patient.family %}{{ patient.family.responsible_name }}{% else %}sin familia{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form method="post" id="patient-create-form">
     {% csrf_token %}
     {{ form|crispy }}
+    {% if family_matches %}
+    <div class="alert alert-warning" role="status">
+        <p>Ya existe una familia con ese nombre de responsable. Dos familias pueden compartir el nombre. Confirme si igual quiere crear una nueva.</p>
+        <ul>
+            {% for family in family_matches %}
+            <li>
+                {{ family.responsible_name }}
+                — Comunidad:
+                {% if family.community %}{{ family.community.name }}{% else %}sin comunidad{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" name="confirm_new_family" id="confirm-new-family" value="1">
+            <label class="form-check-label" for="confirm-new-family">Sí, crear una familia nueva</label>
+        </div>
+    </div>
+    {% endif %}
     <input type="submit" value="{% translate "Submit" %}" />
 </form>
 {% endblock %}

@@ -1,20 +1,13 @@
 """E2E tests for new-patient registration (PatientCreation / patient_form.html).
 
-Two different kinds of test on purpose:
-
-- `test_register_new_child_with_new_family_and_community` exercises what
-  already works today - a baseline. It should PASS right now.
+- `test_register_new_child_with_new_family_and_community` registers a child
+  whose name is not on file, in one POST.
 - `test_registering_a_name_that_already_exists_surfaces_a_duplicate_warning`
-  is spec-driven: it asserts the behavior described in
-  docs/specs/buscar_paciente_existente.md, which is NOT implemented yet.
-  It's marked `@unittest.expectedFailure` so the suite reports it as an
-  expected failure (not a red X to chase) until that spec ships - and so
-  it flips to "unexpected success" the moment it does, which is your
-  signal to remove the decorator, not a bug.
+  searches by name before create and expects a link to the existing patient
+  (`docs/specs/buscar_paciente_existente.md`).
 """
 
 import datetime
-import unittest
 
 from anthrocalc.models import Community, Family, Patient
 
@@ -42,7 +35,6 @@ class PatientRegistrationE2ETests(PlaywrightTestCase):
         self.assertEqual(patient.family.responsible_name, "Familia Nueva E2E")
         self.assertEqual(patient.family.community.name, "Comunidad Nueva E2E")
 
-    @unittest.expectedFailure
     def test_registering_a_name_that_already_exists_surfaces_a_duplicate_warning(self):
         self.login_as_field_agent()
         community = Community.objects.create(name="Comunidad Existente E2E")

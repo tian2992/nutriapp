@@ -1,7 +1,62 @@
 import datetime
 from django import forms
 from django.forms import formset_factory
-from .models import Metric, MultipleVisit, Patient, Visit, Family, Community
+from .models import (
+    ENVIRONMENT_YES_NO_FLAGS,
+    METRIC_CLINICAL_FLAGS,
+    Community,
+    EnvironmentMetric,
+    Family,
+    Metric,
+    MultipleVisit,
+    Patient,
+    Visit,
+)
+
+# Posted values are the strings a <select> submits. True/False are also
+# accepted so existing tests that post real booleans still validate.
+YES_NO_UNKNOWN_CHOICES = (
+    ("", "Sin dato"),
+    ("True", "Sí"),
+    ("False", "No"),
+)
+
+
+def coerce_yes_no_unknown(value):
+    if value in (True, "True", "true", "1"):
+        return True
+    if value in (False, "False", "false", "0"):
+        return False
+    return None
+
+
+class YesNoUnknownFormField(forms.TypedChoiceField):
+    """Sí / No / Sin dato, stored as True / False / None."""
+
+    def __init__(self, **kwargs):
+        widget_attrs = kwargs.pop("widget_attrs", None)
+        kwargs.setdefault("choices", YES_NO_UNKNOWN_CHOICES)
+        kwargs.setdefault("coerce", coerce_yes_no_unknown)
+        kwargs.setdefault("empty_value", None)
+        kwargs.setdefault("required", False)
+        if "widget" not in kwargs:
+            attrs = {"class": "form-select"}
+            if widget_attrs:
+                attrs.update(widget_attrs)
+            kwargs["widget"] = forms.Select(attrs=attrs)
+        super().__init__(**kwargs)
+
+
+def use_yes_no_unknown_fields(form, names):
+    for name in names:
+        if name not in form.fields:
+            continue
+        current = form.fields[name]
+        form.fields[name] = YesNoUnknownFormField(
+            label=current.label,
+            help_text=current.help_text,
+            required=False,
+        )
 
 
 def jornadas_for_patient(patient):
@@ -255,6 +310,8 @@ class MetricForm(forms.ModelForm):
         else:
             self.fields["multiple_visit"].queryset = jornadas_for_patient(patient)
 
+        use_yes_no_unknown_fields(self, METRIC_CLINICAL_FLAGS)
+
     def clean(self):
         cleaned_data = super().clean()
         visit = cleaned_data.get("visit")
@@ -276,6 +333,28 @@ class MetricForm(forms.ModelForm):
                     "La jornada debe pertenecer a la comunidad del paciente.",
                 )
         return cleaned_data
+
+
+class EnvironmentMetricForm(forms.ModelForm):
+    class Meta:
+        model = EnvironmentMetric
+        fields = [
+            "dietary_diversity_score",
+            "breastfeeding",
+            "immunization_up_to_date",
+            "recent_illness",
+            "recent_illness_type",
+            "notes",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        use_yes_no_unknown_fields(self, ENVIRONMENT_YES_NO_FLAGS)
+
+
+class EnvironmentMetricCreateForm(EnvironmentMetricForm):
+    class Meta(EnvironmentMetricForm.Meta):
+        fields = ["visit", *EnvironmentMetricForm.Meta.fields]
 
 
 class MassMeasurementHeaderForm(forms.Form):
@@ -322,9 +401,9 @@ class MassMeasurementRowForm(forms.Form):
         max_value=50.0,
         widget=forms.NumberInput(attrs={"class": "form-control form-control-sm text-end", "step": "0.1", "placeholder": "cm"}),
     )
-    edema = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    edema = YesNoUnknownFormField(
+        label="Edema",
+        widget_attrs={"class": "form-select form-select-sm"},
     )
     notes = forms.CharField(
         required=False,

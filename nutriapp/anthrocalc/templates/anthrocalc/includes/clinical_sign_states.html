@@ -1,0 +1,17 @@
+{% load i18n %}
+<ul class="list-unstyled small mb-2">
+  <li>{% translate "Edema" %}: {{ metric.edema|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Diarrea" %}: {{ metric.diarrhea|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Vómitos incoercibles" %}: {{ metric.intractable_vomiting|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Convulsiones" %}: {{ metric.convulsions|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Letargo / No alerta" %}: {{ metric.lethargy_not_alert|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Inconsciencia" %}: {{ metric.unconsciousness|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Hipoglucemia" %}: {{ metric.hypoglycemia|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Fiebre alta" %}: {{ metric.high_fever|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Hipotermia" %}: {{ metric.hypothermia|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Deshidratación severa" %}: {{ metric.severe_dehydration|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Infección de las vías respiratorias bajas" %}: {{ metric.lower_respiratory_tract_infection|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Anemia severa" %}: {{ metric.severe_anemia|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Signos oculares de deficiencia de Vit A" %}: {{ metric.eye_signs_vit_a|yesno:"Sí,No,Sin dato" }}</li>
+  <li>{% translate "Lesiones cutáneas" %}: {{ metric.skin_lesions|yesno:"Sí,No,Sin dato" }}</li>
+</ul>

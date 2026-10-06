@@ -30,9 +30,8 @@
           {% if metric.skin_lesions %}<li>{% translate "Lesiones cutáneas" %}</li>{% endif %}
       </ul>
   </div>
-{% else %}
-  <p>{% translate "No se detectaron signos de peligro." %}</p>
 {% endif %}
+{% include "anthrocalc/includes/clinical_sign_states.html" %}
 
 <p>
   <a href='{% url "metrics:edit" metric.id %}'>{% translate "Editar esta medición." %}</a><br/>

@@ -19,6 +19,37 @@
     </div>
 </div>
 
+<form method="get" action="{% url 'communities:mass_visit' community.id %}" class="card mb-4 shadow-sm" role="search">
+    <div class="card-body">
+        <label for="mass-visit-q" class="form-label fw-bold">{% translate "Buscar niño en esta comunidad" %}</label>
+        <div class="input-group">
+            <input type="search" id="mass-visit-q" name="q" value="{{ query }}" class="form-control" placeholder="{% translate 'Nombre o código' %}">
+            <button type="submit" class="btn btn-primary">{% translate "Buscar" %}</button>
+            {% if query %}
+            <a href="{% url 'communities:mass_visit' community.id %}" class="btn btn-outline-secondary">{% translate "Ver listado completo" %}</a>
+            {% endif %}
+        </div>
+        {% if query %}
+        <div class="mt-3" id="mass-visit-search-results">
+            {% if search_results %}
+            <p class="mb-2 text-muted">{% translate "Coincidencias en esta comunidad. Elija una para ir a su fila de medición." %}</p>
+            <div class="list-group">
+                {% for patient in search_results %}
+                <a href="#patient-row-{{ patient.id }}" class="list-group-item list-group-item-action">
+                    <span class="fw-semibold">{{ patient.name }}</span>
+                    <span class="text-muted ms-2">{{ patient.code }}</span>
+                    {% if patient.family %}<span class="ms-2">{{ patient.family.responsible_name }}</span>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="mb-0 text-muted">{% translate "Ningún niño de esta comunidad coincide." %}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</form>
+
 <form method="post" id="massVisitForm">
     {% csrf_token %}
 
@@ -88,7 +119,7 @@
                 </thead>
                 <tbody>
                     {% for form, pdata in rows %}
-                    <tr class="{% if form.errors %}table-danger{% endif %}">
+                    <tr id="patient-row-{{ pdata.patient.id }}" class="{% if form.errors %}table-danger{% endif %}">
                         {{ form.patient_id }}
                         <td class="fw-bold">{{ pdata.patient.code }}</td>
                         <td>

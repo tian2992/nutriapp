@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.timezone import now
@@ -303,31 +304,86 @@ class Visit(models.Model):
         return "{} - {}".format(self.patient.name, self.date)
 
 
+METRIC_CLINICAL_FLAGS = (
+    "edema",
+    "diarrhea",
+    "intractable_vomiting",
+    "convulsions",
+    "lethargy_not_alert",
+    "unconsciousness",
+    "hypoglycemia",
+    "high_fever",
+    "hypothermia",
+    "severe_dehydration",
+    "lower_respiratory_tract_infection",
+    "severe_anemia",
+    "eye_signs_vit_a",
+    "skin_lesions",
+)
+
+ENVIRONMENT_YES_NO_FLAGS = (
+    "breastfeeding",
+    "immunization_up_to_date",
+    "recent_illness",
+)
+
+
+class YesNoUnknownField(models.BooleanField):
+    """Yes, no, or unknown. Unknown is stored as NULL.
+
+    The form widget offers Sí / No / Sin dato. NullBooleanField is not used.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs["null"] = True
+        kwargs["blank"] = True
+        kwargs.setdefault("default", None)
+        super().__init__(*args, **kwargs)
+
+    def formfield(self, **kwargs):
+        from .forms import YesNoUnknownFormField
+
+        kwargs["form_class"] = YesNoUnknownFormField
+        kwargs["required"] = False
+        return models.Field.formfield(self, **kwargs)
+
+
 class Metric(models.Model):
-    weight = models.FloatField(verbose_name="Peso (kg)")
-    height = models.FloatField(verbose_name="Altura (cm)")
+    weight = models.FloatField(
+        verbose_name="Peso (kg)",
+        validators=[MinValueValidator(0.5), MaxValueValidator(150)],
+    )
+    height = models.FloatField(
+        verbose_name="Altura (cm)",
+        validators=[MinValueValidator(20), MaxValueValidator(250)],
+    )
     standing_or_upright = models.BooleanField(null=True, verbose_name="¿Fue medido de pie / parado?")
 
     # New clinical fields for Step 1
-    muac = models.FloatField(null=True, blank=True, verbose_name="MUAC (cm)")
-
-    # Danger signs / Complications
-    edema = models.BooleanField(default=False, verbose_name="Edema")
-    diarrhea = models.BooleanField(default=False, verbose_name="Diarrea")
-    intractable_vomiting = models.BooleanField(default=False, verbose_name="Vómitos incoercibles")
-    convulsions = models.BooleanField(default=False, verbose_name="Convulsiones")
-    lethargy_not_alert = models.BooleanField(default=False, verbose_name="Letargo / No alerta")
-    unconsciousness = models.BooleanField(default=False, verbose_name="Inconsciencia")
-    hypoglycemia = models.BooleanField(default=False, verbose_name="Hipoglucemia")
-    high_fever = models.BooleanField(default=False, verbose_name="Fiebre alta")
-    hypothermia = models.BooleanField(default=False, verbose_name="Hipotermia")
-    severe_dehydration = models.BooleanField(default=False, verbose_name="Deshidratación severa")
-    lower_respiratory_tract_infection = models.BooleanField(
-        default=False, verbose_name="Infección de las vías respiratorias bajas"
+    muac = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name="MUAC (cm)",
+        validators=[MinValueValidator(5), MaxValueValidator(50)],
     )
-    severe_anemia = models.BooleanField(default=False, verbose_name="Anemia severa")
-    eye_signs_vit_a = models.BooleanField(default=False, verbose_name="Signos oculares de deficiencia de Vit A")
-    skin_lesions = models.BooleanField(default=False, verbose_name="Lesiones cutáneas")
+
+    # Danger signs / Complications. Unknown is NULL, not False.
+    edema = YesNoUnknownField(verbose_name="Edema")
+    diarrhea = YesNoUnknownField(verbose_name="Diarrea")
+    intractable_vomiting = YesNoUnknownField(verbose_name="Vómitos incoercibles")
+    convulsions = YesNoUnknownField(verbose_name="Convulsiones")
+    lethargy_not_alert = YesNoUnknownField(verbose_name="Letargo / No alerta")
+    unconsciousness = YesNoUnknownField(verbose_name="Inconsciencia")
+    hypoglycemia = YesNoUnknownField(verbose_name="Hipoglucemia")
+    high_fever = YesNoUnknownField(verbose_name="Fiebre alta")
+    hypothermia = YesNoUnknownField(verbose_name="Hipotermia")
+    severe_dehydration = YesNoUnknownField(verbose_name="Deshidratación severa")
+    lower_respiratory_tract_infection = YesNoUnknownField(
+        verbose_name="Infección de las vías respiratorias bajas"
+    )
+    severe_anemia = YesNoUnknownField(verbose_name="Anemia severa")
+    eye_signs_vit_a = YesNoUnknownField(verbose_name="Signos oculares de deficiencia de Vit A")
+    skin_lesions = YesNoUnknownField(verbose_name="Lesiones cutáneas")
 
     # Z-score cache fields for Step 1
     wfaz = models.FloatField(null=True, blank=True, verbose_name="WAZ (Peso para la Edad)")
@@ -340,7 +396,18 @@ class Metric(models.Model):
     )  # TODO: check this relationship
 
     def save(self, *args, **kwargs):
-        from .person_utils import calculate_zscore_for_metric
+        from .person_utils import calculate_age_at_date, calculate_zscore_for_metric
+
+        # A later re-save of a historical row with standing_or_upright=None will
+        # change its HAZ. This does not backfill old rows.
+        if self.standing_or_upright is None and self.visit_id:
+            age = calculate_age_at_date(self.visit.patient, self.visit.date)
+            months = age.get("months_float")
+            if months is None:
+                months = age.get("months")
+            if months is not None:
+                # Under 24 months: lying down. At 24 months and older: standing.
+                self.standing_or_upright = months >= 24
 
         calculate_zscore_for_metric(self)
         super(Metric, self).save(*args, **kwargs)
@@ -360,9 +427,9 @@ class EnvironmentMetric(models.Model):
     dietary_diversity_score = models.IntegerField(
         null=True, blank=True, verbose_name="Puntaje de diversidad dietética (0-9)"
     )
-    breastfeeding = models.BooleanField(default=False, verbose_name="Lactancia materna")
-    immunization_up_to_date = models.BooleanField(default=False, verbose_name="Inmunización al día")
-    recent_illness = models.BooleanField(default=False, verbose_name="Enfermedad reciente")
+    breastfeeding = YesNoUnknownField(verbose_name="Lactancia materna")
+    immunization_up_to_date = YesNoUnknownField(verbose_name="Inmunización al día")
+    recent_illness = YesNoUnknownField(verbose_name="Enfermedad reciente")
     recent_illness_type = models.CharField(
         max_length=100, null=True, blank=True, verbose_name="Tipo de enfermedad reciente"
     )

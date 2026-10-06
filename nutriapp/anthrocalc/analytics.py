@@ -12,10 +12,33 @@ factors for mixed models (patient nested in family nested in community).
 See docs/longform_dataset.md for the column dictionary.
 """
 
+import math
+
 import pandas as pd
 
+from .models import ENVIRONMENT_YES_NO_FLAGS, METRIC_CLINICAL_FLAGS, Visit
 from .person_utils import calculate_age_at_date
-from .models import Visit
+
+# Clinical signs and environment yes/no flags. Unknown must stay Python None
+# in the frame (not 0 and not False).
+TRI_STATE_EXPORT_COLUMNS = METRIC_CLINICAL_FLAGS + ENVIRONMENT_YES_NO_FLAGS
+
+
+def _python_yes_no_unknown(value):
+    """Return True, False, or Python None. NaN / pd.NA become None."""
+    if value is None or value is pd.NA:
+        return None
+    try:
+        missing = pd.isna(value)
+    except TypeError:
+        missing = False
+    if missing is True:
+        return None
+    if isinstance(value, bool) or type(value).__name__ == "bool_":
+        return True if value else False
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return value
 
 LONGFORM_COLUMNS = [
     "visit_id",
@@ -162,4 +185,7 @@ def build_longform_dataframe():
             }
         )
 
-    return pd.DataFrame(rows, columns=LONGFORM_COLUMNS)
+    frame = pd.DataFrame(rows, columns=LONGFORM_COLUMNS)
+    for column in TRI_STATE_EXPORT_COLUMNS:
+        frame[column] = [_python_yes_no_unknown(value) for value in frame[column].tolist()]
+    return frame
