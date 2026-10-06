@@ -207,7 +207,7 @@
     <h3 class="h4 mb-3">{% translate "Historial de Jornadas en la Comunidad" %}</h3>
     <div class="list-group">
         {% for mv in multiple_visits %}
-        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+        <a href="{% url 'communities:jornada' object.id mv.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
             <div>
                 <h6 class="mb-1">{{ mv.date|date:"Y-m-d H:i" }} - {{ mv.responsible_name|default:"Sin encargado asignado" }}</h6>
                 {% if mv.notes %}
@@ -217,7 +217,7 @@
             <span class="badge bg-primary rounded-pill">
                 {{ mv.visit_set.count }} {% translate "visitas" %}
             </span>
-        </div>
+        </a>
         {% endfor %}
     </div>
 </div>

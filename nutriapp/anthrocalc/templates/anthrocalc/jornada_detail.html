@@ -1,0 +1,75 @@
+{% extends 'anthrocalc/base.html' %}
+{% load i18n %}
+
+{% block title %}{% translate "Jornada" %} - {{ jornada.community.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 border-bottom pb-2">
+    <div>
+        <h1 class="h3 mb-0">{% translate "Jornada de Medición" %}</h1>
+        <p class="text-muted mb-0">
+            <strong>{% translate "Comunidad:" %}</strong>
+            <a href="{% url 'communities:detail' jornada.community.id %}">{{ jornada.community.name }}</a>
+            &middot; {{ jornada.date|date:"Y-m-d H:i" }}
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'communities:mass_visit' jornada.community.id %}" class="btn btn-success">
+            {% translate "Nueva Jornada" %}
+        </a>
+        <a href="{% url 'communities:detail' jornada.community.id %}" class="btn btn-outline-secondary">
+            {% translate "Volver al Listado" %}
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <p class="mb-1">
+            <strong>{% translate "Encargado:" %}</strong>
+            {{ jornada.responsible_name|default:"Sin encargado asignado" }}
+        </p>
+        {% if jornada.notes %}
+        <p class="mb-0">
+            <strong>{% translate "Notas:" %}</strong> {{ jornada.notes }}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="h5 mb-3">{% translate "Visitas registradas" %} ({{ visits|length }})</h2>
+<table class="table table-striped table-sm">
+    <thead>
+        <tr>
+            <th>{% translate "Código" %}</th>
+            <th>{% translate "Niño" %}</th>
+            <th>{% translate "Peso (kg)" %}</th>
+            <th>{% translate "Talla (cm)" %}</th>
+            <th class="text-end">{% translate "Acciones" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for visit in visits %}
+        <tr>
+            <td>{{ visit.patient.code }}</td>
+            <td>
+                <a href="{% url 'patients:detail' visit.patient.id %}">{{ visit.patient.name }}</a>
+            </td>
+            <td>
+                {% if visit.metric %}{{ visit.metric.weight|floatformat:2 }}{% else %}—{% endif %}
+            </td>
+            <td>
+                {% if visit.metric %}{{ visit.metric.height|floatformat:2 }}{% else %}—{% endif %}
+            </td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'visits:detail' visit.id %}">{% translate "Ver" %}</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">{% translate "No hay visitas en esta jornada." %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

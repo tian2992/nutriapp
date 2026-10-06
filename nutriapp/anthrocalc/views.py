@@ -643,6 +643,28 @@ class CommunityDelete(DeleteView):
 
 
 @method_decorator(login_required, name="dispatch")
+class JornadaDetail(DetailView):
+    model = MultipleVisit
+    template_name = "anthrocalc/jornada_detail.html"
+    context_object_name = "jornada"
+
+    def get_queryset(self):
+        return MultipleVisit.objects.filter(community_id=self.kwargs["community_id"]).select_related(
+            "community"
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        visits = (
+            Visit.objects.filter(multiple_visit=self.object)
+            .select_related("patient", "metric")
+            .order_by("patient__name")
+        )
+        context["visits"] = visits
+        return context
+
+
+@method_decorator(login_required, name="dispatch")
 class CommunityMassVisit(View):
     template_name = "anthrocalc/community_mass_visit.html"
 

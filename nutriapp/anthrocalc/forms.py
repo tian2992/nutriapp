@@ -71,6 +71,8 @@ class PatientForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["code"].required = False
+        self.fields["code"].help_text = "Opcional. Si se deja vacío, se genera automáticamente (QA + municipio + comunidad + número)."
         self.fields["family"].required = False
         if self.instance and self.instance.pk and self.instance.family:
             if self.instance.family.community:
@@ -82,6 +84,8 @@ class PatientForm(forms.ModelForm):
         cleaned_data = super().clean()
         family = cleaned_data.get("family")
         new_family_name = cleaned_data.get("new_family_name")
+        code = (cleaned_data.get("code") or "").strip()
+        cleaned_data["code"] = code
 
         if not family and not new_family_name:
             self.add_error("family", "Debe seleccionar una familia existente o ingresar el nombre para una nueva.")
@@ -107,6 +111,7 @@ class PatientForm(forms.ModelForm):
                 family.save(update_fields=["community"])
             instance.family = family
 
+        # Ensure family/community are set before Patient.save() autogenerates the code.
         if commit:
             instance.save()
         return instance
