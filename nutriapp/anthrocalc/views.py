@@ -775,6 +775,20 @@ class JornadaDetail(DetailView):
             "community"
         )
 
+    def _search_results(self, query):
+        if not query:
+            return []
+        already_on_jornada = Visit.objects.filter(multiple_visit=self.object).values_list(
+            "patient_id", flat=True
+        )
+        return list(
+            Patient.objects.filter(family__community=self.object.community)
+            .exclude(pk__in=already_on_jornada)
+            .filter(Q(name__icontains=query) | Q(code__icontains=query))
+            .select_related("family")
+            .order_by("name", "pk")
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         visits = list(
@@ -789,7 +803,41 @@ class JornadaDetail(DetailView):
                 metric = None
             visit.status_info = get_nutritional_status(metric) if metric is not None else None
         context["visits"] = visits
+        query = (self.request.GET.get("q") or "").strip()
+        context["query"] = query
+        context["search_results"] = self._search_results(query)
+        context["show_add_panel"] = self.request.GET.get("add") == "1" or bool(query)
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.POST.get("action") != "add_patient":
+            return self.get(request, *args, **kwargs)
+
+        # Insert-only: create a Visit for this child. Never update/delete other
+        # visits or any Metric already stored on this jornada.
+        patient = get_object_or_404(
+            Patient.objects.select_related("family__community"),
+            pk=request.POST.get("patient_id"),
+        )
+        community = patient.community
+        if community is None or community.id != self.object.community_id:
+            messages.error(request, "El niño debe pertenecer a la comunidad de esta jornada.")
+            return redirect(self.object.get_absolute_url())
+
+        _visit, created = Visit.objects.get_or_create(
+            multiple_visit=self.object,
+            patient=patient,
+            defaults={
+                "date": self.object.date,
+                "entered_by": request.user if request.user.is_authenticated else None,
+            },
+        )
+        if created:
+            messages.success(request, f"Se incluyó a {patient.name} en la jornada.")
+        else:
+            messages.info(request, f"{patient.name} ya está en esta jornada.")
+        return redirect(self.object.get_absolute_url())
 
 
 @method_decorator(login_required, name="dispatch")

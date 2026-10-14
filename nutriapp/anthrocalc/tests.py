@@ -473,6 +473,70 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         self.assertContains(detail, "Ana Promotora")
         self.assertContainsFloats(detail, "11.2", "82.0")
 
+    def test_jornada_add_child_preserves_existing_metrics(self):
+        mv = MultipleVisit.objects.create(
+            community=self.community,
+            date=timezone.now(),
+            responsible_name="Ana Promotora",
+        )
+        existing_visit = Visit.objects.create(
+            patient=self.patient, date=mv.date, multiple_visit=mv
+        )
+        existing_metric = Metric.objects.create(
+            visit=existing_visit, weight=11.2, height=82.0, standing_or_upright=True
+        )
+        other = Patient.objects.create(
+            code="PAC003",
+            name="Carla Gómez",
+            gender="F",
+            dob=datetime.date(2022, 6, 1),
+            family=self.family,
+        )
+        jornada_url = reverse("communities:jornada", args=[self.community.id, mv.id])
+
+        response = self.client.post(
+            jornada_url,
+            {"action": "add_patient", "patient_id": other.id},
+        )
+        self.assertRedirects(response, jornada_url)
+
+        existing_visit.refresh_from_db()
+        existing_metric.refresh_from_db()
+        self.assertEqual(existing_visit.multiple_visit_id, mv.id)
+        self.assertEqual(existing_metric.weight, 11.2)
+        self.assertEqual(existing_metric.height, 82.0)
+        self.assertEqual(Metric.objects.filter(visit__multiple_visit=mv).count(), 1)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        added = Visit.objects.get(multiple_visit=mv, patient=other)
+        self.assertFalse(Metric.objects.filter(visit=added).exists())
+
+        # Second include is a no-op and still leaves prior data intact.
+        response = self.client.post(
+            jornada_url,
+            {"action": "add_patient", "patient_id": other.id},
+        )
+        self.assertRedirects(response, jornada_url)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        existing_metric.refresh_from_db()
+        self.assertEqual(existing_metric.weight, 11.2)
+
+    def test_jornada_add_child_search_excludes_children_already_on_jornada(self):
+        mv = MultipleVisit.objects.create(community=self.community, date=timezone.now())
+        Visit.objects.create(patient=self.patient, date=mv.date, multiple_visit=mv)
+        other = Patient.objects.create(
+            code="PAC004",
+            name="Diana Gómez",
+            gender="F",
+            dob=datetime.date(2022, 7, 1),
+            family=self.family,
+        )
+        jornada_url = reverse("communities:jornada", args=[self.community.id, mv.id])
+        response = self.client.get(jornada_url, {"add": "1", "q": "Gómez"})
+        self.assertEqual(response.status_code, 200)
+        ids = [p.id for p in response.context["search_results"]]
+        self.assertIn(other.id, ids)
+        self.assertNotIn(self.patient.id, ids)
+
 
 class CommunityFilteringTests(BaseAuthenticatedTestCase):
     def setUp(self):

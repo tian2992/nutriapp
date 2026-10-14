@@ -3,7 +3,7 @@
 ## Prioridad alta
 - [x] Al crear un nuevo niño, redirigir automáticamente a la página del niño.
 - [x] En la vista de detalle de visita, permitir agregar la visita a una jornada existente.
-- [ ] En la vista de jornada, agregar un enlace tipo pop-up para incluir a un niño en la lista de la jornada.
+- [x] En la vista de jornada, agregar un enlace tipo pop-up para incluir a un niño en la lista de la jornada.
 - [ ] Añadir botón para guardar la medición por niño en la vista de jornada.
   - Después de guardar, mostrar el estado nutricional en la misma vista que en comunidad.
   - Mostrar una marca de confirmación cuando la medición se haya guardado correctamente.
