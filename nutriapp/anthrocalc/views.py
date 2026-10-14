@@ -1,5 +1,6 @@
 import csv
 import datetime
+import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -38,6 +39,8 @@ from .person_utils import (
     fetch_metrics_from_visits,
     get_nutritional_status,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(login_required, name="dispatch")

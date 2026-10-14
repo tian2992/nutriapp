@@ -232,3 +232,173 @@ class LoggingSettingsTests(SimpleTestCase):
                 loggers[noisy_lib]["propagate"],
                 f"{noisy_lib} logger should have propagate=False",
             )
+
+    def test_module_named_loggers_instantiated(self):
+        """
+        Verify that all target anthrocalc modules instantiate logger = logging.getLogger(__name__).
+        """
+        import anthrocalc.anthrocalc as m_anthrocalc
+        import anthrocalc.bulk_import as m_bulk_import
+        import anthrocalc.demo as m_demo
+        import anthrocalc.person_utils as m_person_utils
+        import anthrocalc.views as m_views
+
+        self.assertIsInstance(m_person_utils.logger, logging.Logger)
+        self.assertEqual(m_person_utils.logger.name, "anthrocalc.person_utils")
+
+        self.assertIsInstance(m_anthrocalc.logger, logging.Logger)
+        self.assertEqual(m_anthrocalc.logger.name, "anthrocalc.anthrocalc")
+
+        self.assertIsInstance(m_demo.logger, logging.Logger)
+        self.assertEqual(m_demo.logger.name, "anthrocalc.demo")
+
+        self.assertIsInstance(m_views.logger, logging.Logger)
+        self.assertEqual(m_views.logger.name, "anthrocalc.views")
+
+        self.assertIsInstance(m_bulk_import.logger, logging.Logger)
+        self.assertEqual(m_bulk_import.logger.name, "anthrocalc.bulk_import")
+
+    def test_person_utils_logging_unknown_gender(self):
+        import datetime
+        from unittest.mock import MagicMock
+        from anthrocalc.person_utils import calculate_zscore_for_metric
+
+        mock_patient = MagicMock()
+        mock_patient.dob = datetime.date(2020, 1, 1)
+        mock_patient.gender = "UnknownGender"
+
+        mock_visit = MagicMock()
+        mock_visit.patient = mock_patient
+        mock_visit.date = MagicMock()
+        mock_visit.date.date.return_value = datetime.date(2022, 1, 1)
+
+        mock_metric = MagicMock()
+        mock_metric.visit = mock_visit
+
+        with self.assertLogs("anthrocalc.person_utils", level="ERROR") as cm:
+            calculate_zscore_for_metric(mock_metric)
+            self.assertTrue(any("Unknown gender: UnknownGender" in out for out in cm.output))
+
+    def test_person_utils_logging_calculation_warning_and_exception(self):
+        import datetime
+        from unittest.mock import MagicMock
+        from anthrocalc.person_utils import calculate_zscore_for_metric
+
+        mock_patient = MagicMock()
+        mock_patient.dob = datetime.date(2020, 1, 1)
+        mock_patient.gender = "male"
+
+        mock_visit = MagicMock()
+        mock_visit.patient = mock_patient
+        mock_visit.date = MagicMock()
+        mock_visit.date.date.return_value = datetime.date(2022, 1, 1)
+
+        mock_metric = MagicMock()
+        mock_metric.visit = mock_visit
+        mock_metric.weight = "invalid_weight_string"
+        mock_metric.height = 80.0
+        mock_metric.standing_or_upright = True
+
+        # Should log warning on WAZ calculation failure without crashing
+        with self.assertLogs("anthrocalc.person_utils", level="WARNING") as cm:
+            calculate_zscore_for_metric(mock_metric)
+            self.assertTrue(any("Error calculating WAZ" in out for out in cm.output))
+
+        # When an unhandled unexpected error occurs, logger.exception must record traceback
+        mock_metric_broken = MagicMock()
+        mock_metric_broken.visit.patient.gender = None  # None.lower() will raise AttributeError
+
+        with self.assertLogs("anthrocalc.person_utils", level="ERROR") as cm:
+            calculate_zscore_for_metric(mock_metric_broken)
+            self.assertTrue(any("Failed to calculate Z-scores" in out for out in cm.output))
+            # Verify that exc_info was captured on the LogRecord
+            self.assertIsNotNone(cm.records[-1].exc_info)
+            self.assertIs(cm.records[-1].exc_info[0], AttributeError)
+
+    @patch("anthrocalc.anthrocalc.pygrowup.Calculator", create=True)
+    def test_anthrocalc_loader_logging(self, mock_calculator_cls):
+        import pandas as pd
+        from anthrocalc.anthrocalc import AnthroLoader
+
+        # Matching columns dataframe
+        df_matching = pd.DataFrame(
+            columns=["Col0", "Col1", "Col2", "Col3", "Col4", "Peso_2020-01", "Talla_2020-01", "Fecha_2020-01", "Lay_2020-01"]
+        )
+        loader_match = AnthroLoader(df_matching)
+        with self.assertLogs("anthrocalc.anthrocalc", level="DEBUG") as cm:
+            loader_match.load_segments()
+            self.assertTrue(any("Sets of Measures of Weight and Height match." in out for out in cm.output))
+
+        # Non-matching columns dataframe
+        df_mismatch = pd.DataFrame(
+            columns=["Col0", "Col1", "Col2", "Col3", "Col4", "Peso_2020-01", "Talla_2020-02", "Fecha_2020-01", "Lay_2020-01"]
+        )
+        loader_mismatch = AnthroLoader(df_mismatch)
+        with self.assertLogs("anthrocalc.anthrocalc", level="ERROR") as cm:
+            loader_mismatch.load_segments()
+            self.assertTrue(any("No Match on Weight-Height Columns!" in out for out in cm.output))
+
+    @patch("anthrocalc.anthrocalc.numpy.NaN", float("nan"), create=True)
+    @patch("anthrocalc.anthrocalc.pygrowup.Calculator", create=True)
+    def test_anthrocalc_loader_warning_exc_info(self, mock_calculator_cls):
+        import pandas as pd
+        from anthrocalc.anthrocalc import AnthroLoader
+
+        df = pd.DataFrame(
+            {
+                "Col0": [1],
+                "Col1": [2],
+                "Col2": [3],
+                "Col3": [4],
+                "FechaNacimiento": ["2020-01-01"],
+                "Peso_2020-01": [10.0],
+                "Talla_2020-01": [80.0],
+                "Fecha_2020-01": ["invalid_date_entry"],
+                "Lay_2020-01": [0],
+            }
+        )
+        loader = AnthroLoader(df)
+        loader.load_segments()
+
+        with self.assertLogs("anthrocalc.anthrocalc", level="WARNING") as cm:
+            loader.calculate_indexes()
+            self.assertTrue(any("invalid date" in out for out in cm.output))
+            # Verify that exc_info=True was passed and captured on warning record
+            self.assertIsNotNone(cm.records[-1].exc_info)
+
+    def test_demo_missing_file_logs_error_and_raises(self):
+        from anthrocalc.demo import run_demo
+
+        non_existent = "/tmp/non_existent_demo_file_12345.xls"
+        with self.assertLogs("anthrocalc.demo", level="ERROR") as cm:
+            with self.assertRaises(FileNotFoundError):
+                run_demo(non_existent)
+            self.assertTrue(any("Demo spreadsheet not found" in out for out in cm.output))
+
+    def test_demo_sweet_toast_melt_signatures(self):
+        import pandas as pd
+        from anthrocalc.demo import sweet_toast_melt
+
+        # 1. Old positional form: sweet_toast_melt(df, "hfaz")
+        df_with_code = pd.DataFrame({
+            "Codigo": ["P1", "P2"],
+            "2020-01-01": [0.5, -0.2],
+        })
+        melted_old_pos = sweet_toast_melt(df_with_code, "hfaz")
+        self.assertIn("Codigo", melted_old_pos.columns)
+        self.assertIn("hfaz", melted_old_pos.columns)
+        self.assertEqual(len(melted_old_pos), 2)
+
+        # 2. Form with tabla_source providing Codigo
+        df_no_code = pd.DataFrame({
+            "2020-01-01": [0.5, -0.2],
+        })
+        tabla_source = pd.DataFrame({"Codigo": ["S1", "S2"]})
+        melted_with_source = sweet_toast_melt(df_no_code, "wfaz", tabla_source=tabla_source)
+        self.assertIn("Codigo", melted_with_source.columns)
+        self.assertIn("wfaz", melted_with_source.columns)
+        self.assertEqual(list(melted_with_source["Codigo"]), ["S1", "S2"])
+
+        # 3. Default vname="z-val"
+        melted_default = sweet_toast_melt(df_with_code)
+        self.assertIn("z-val", melted_default.columns)
