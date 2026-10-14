@@ -307,7 +307,8 @@ def find_drift():
     missing_tables, missing_columns = [], []
     with connection.cursor() as cursor:
         tables = set(connection.introspection.table_names(cursor))
-        for model in apps.get_models():
+        # include_auto_created: the hidden tables behind ManyToManyFields.
+        for model in apps.get_models(include_auto_created=True):
             meta = model._meta
             if meta.proxy or not meta.managed or meta.swapped:
                 continue
@@ -342,9 +343,17 @@ if not REPAIR:
 # Same operations a migration would run, without relying on django_migrations
 # (whose history may not match the database).
 if tables:
+    # create_model also creates the M2M tables of the model it is given, so a
+    # hidden through table is skipped when its owning model is created here.
+    to_create = [
+        m for m in tables
+        if not (m._meta.auto_created and m._meta.auto_created in tables)
+    ]
     try:
+        # One editor for the batch: foreign keys between new tables are added
+        # as deferred SQL once every table exists, so order does not matter.
         with connection.schema_editor() as editor:
-            for m in tables:
+            for m in to_create:
                 editor.create_model(m)
         print("  created: " + ", ".join(m._meta.db_table for m in tables))
     except Exception as exc:
