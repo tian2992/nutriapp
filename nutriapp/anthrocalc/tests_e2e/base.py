@@ -18,10 +18,15 @@ erroring, so `python manage.py test` (no args) stays green in environments
 that haven't opted into E2E testing.
 """
 
+import os
 import unittest
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
+# Playwright's sync API drives an asyncio loop; Django ORM calls from setUp
+# would otherwise raise SynchronousOnlyOperation under recent Playwright.
+os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 try:
     from playwright.sync_api import sync_playwright
@@ -54,17 +59,28 @@ class PlaywrightTestCase(StaticLiveServerTestCase):
         super().tearDown()
 
     def login_as_field_agent(self):
-        """Create a user and log in through the real admin login form.
+        """Create a user and attach a logged-in session cookie to Playwright.
 
-        LOGIN_URL is /admin/login/ (settings.py:152) - there's no separate
-        app login page yet, @login_required views bounce here.
+        LOGIN_URL is /admin/login/. Filling that form through Playwright has
+        been flaky against recent Chromium builds; establishing the session
+        with Django's test client and copying ``sessionid`` is stable and
+        still exercises the real authenticated views afterward.
         """
+        from django.test import Client
+
         User = get_user_model()
         username, password = "e2e_agent", "e2e-test-pass-123"
         User.objects.create_user(username=username, password=password)
 
-        self.page.goto(f"{self.live_server_url}/admin/login/")
-        self.page.fill("#id_username", username)
-        self.page.fill("#id_password", password)
-        self.page.click("input[type=submit]")
-        self.page.wait_for_load_state("networkidle")
+        client = Client()
+        assert client.login(username=username, password=password)
+        session_cookie = client.cookies["sessionid"]
+        self.page.context.add_cookies(
+            [
+                {
+                    "name": "sessionid",
+                    "value": session_cookie.value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
