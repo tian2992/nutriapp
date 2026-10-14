@@ -66,12 +66,21 @@ def calculate_zscore_for_metric(metric):
             logger.warning("Error calculating HAZ: %s", e)
             metric.hfaz = None
 
-        # WHZ: Weight-for-height
+        # WHZ: Weight-for-height / Weight-for-length
         try:
-            metric.wfhz = float(obs.wfh(metric.weight, metric.height))
-        except Exception as e:
-            logger.warning("Error calculating WHZ: %s", e)
-            metric.wfhz = None
+            if recumbent or (metric.height is not None and metric.height < 65):
+                metric.wfhz = float(obs.wfl(metric.weight, metric.height))
+            else:
+                metric.wfhz = float(obs.wfh(metric.weight, metric.height))
+        except Exception:
+            try:
+                if recumbent or (metric.height is not None and metric.height < 65):
+                    metric.wfhz = float(obs.wfh(metric.weight, metric.height))
+                else:
+                    metric.wfhz = float(obs.wfl(metric.weight, metric.height))
+            except Exception as e:
+                logger.warning("Error calculating WHZ: %s", e)
+                metric.wfhz = None
 
     except Exception:
         logger.exception("Failed to calculate Z-scores")
