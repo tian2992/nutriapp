@@ -16,7 +16,8 @@ services:
       - ./static:/app/static
       - ./media:/app/media
     depends_on:
-     - db
+      db:
+        condition: service_healthy
 
   db:
    image: postgres:16-alpine
@@ -24,6 +25,13 @@ services:
      - .env
    volumes:
      - nutri_postgres_data:/var/lib/postgresql/data
+   # One-off `docker compose run web ...` commands (migrate, bulk loads) wait
+   # for this instead of racing Postgres start-up.
+   healthcheck:
+     test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
+     interval: 5s
+     timeout: 5s
+     retries: 12
 
 volumes:
   nutri_postgres_data:

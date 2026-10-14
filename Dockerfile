@@ -47,7 +47,10 @@ COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
 # Copying the contents of the nutriapp folder so manage.py is in /app
 COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
 COPY --chown=appuser:appuser nutriapp /app
-RUN chmod +x /app/entrypoint.sh
+# Bulk load / fixture helper, runnable as a one-off container command:
+#   docker compose run --rm web nutri-data export-fixtures --output /data/x.json
+COPY --chown=appuser:appuser scripts/nutri_data.sh /usr/local/bin/nutri-data
+RUN chmod +x /app/entrypoint.sh /usr/local/bin/nutri-data
 
 USER appuser
 
