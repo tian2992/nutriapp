@@ -1647,3 +1647,45 @@ class JornadaStatusBadgeTests(BaseAuthenticatedTestCase):
         response = self.client.get(reverse("communities:jornada", args=[community.id, jornada.id]))
         self.assertContains(response, "Desnutrición Aguda Severa")
         self.assertNotContains(response, 'name="diagnosis"')
+
+
+class RekeyPatientsCommandTests(TestCase):
+    """Decode/rekey must restore child, mother, and family names from the key CSV."""
+
+    def test_rekey_restores_patient_mother_and_family_names(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        from django.core.management import call_command
+
+        from anthrocalc.management.commands.rekey_patients import unmangle
+
+        self.assertEqual(unmangle("3.09165531E+028"), "309165531E20")
+
+        family = Family.objects.create(responsible_name="aaaabbbbcccc")
+        patient = Patient.objects.create(
+            code="RK01",
+            name="dddddddddddd",
+            gender="F",
+            dob=datetime.date(2021, 1, 1),
+            family=family,
+            mother_name="eeeeeeeeeeee",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            key_path = Path(tmp) / "rekey.csv"
+            with key_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["original", "pseudonym"])
+                writer.writeheader()
+                writer.writerow({"original": "María López", "pseudonym": "dddddddddddd"})
+                writer.writerow({"original": "Ana López", "pseudonym": "eeeeeeeeeeee"})
+                writer.writerow({"original": "Familia López", "pseudonym": "aaaabbbbcccc"})
+
+            call_command("rekey_patients", rekey=[str(key_path)])
+
+        patient.refresh_from_db()
+        family.refresh_from_db()
+        self.assertEqual(patient.name, "María López")
+        self.assertEqual(patient.mother_name, "Ana López")
+        self.assertEqual(family.responsible_name, "Familia López")
