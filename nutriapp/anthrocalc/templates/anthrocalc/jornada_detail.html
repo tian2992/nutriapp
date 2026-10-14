@@ -101,7 +101,7 @@
         <tr>
             <td>{{ visit.patient.code }}</td>
             <td>
-                <a href="{% url 'patients:detail' visit.patient.id %}">{{ visit.patient.name }}</a>
+                <a target="_blank" href="{% url 'patients:detail' visit.patient.id %}">{{ visit.patient.name }}</a>
             </td>
             <td>
                 {% if visit.metric %}{{ visit.metric.weight|floatformat:2 }}{% else %}—{% endif %}
@@ -120,7 +120,7 @@
                 {% if visit.entered_by %}{{ visit.entered_by.username }}{% else %}—{% endif %}
             </td>
             <td class="text-end">
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'visits:detail' visit.id %}">{% translate "Ver" %}</a>
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{% url 'visits:detail' visit.id %}">{% translate "Ver" %}</a>
             </td>
         </tr>
         {% empty %}
