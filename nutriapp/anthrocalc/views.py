@@ -171,6 +171,7 @@ class PatientCreation(CreateView):
         "name",
         "gender",
         "dob",
+        "enrolled_on",
         "new_community_name",
         "family",
         "new_family_name",

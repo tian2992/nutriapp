@@ -579,6 +579,7 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
                 "name": "Carla Nueva",
                 "gender": "F",
                 "dob": "2023-03-10",
+                "enrolled_on": "2024-01-15",
                 "community": self.community.id,
                 "new_family_name": "Familia Nueva",
             },
@@ -586,6 +587,7 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
         patient = Patient.objects.get(name="Carla Nueva")
         self.assertRedirects(response, reverse("patients:detail", args=[patient.id]))
         self.assertEqual(patient.family.responsible_name, "Familia Nueva")
+        self.assertEqual(patient.enrolled_on, datetime.date(2024, 1, 15))
         self.assertEqual(Family.objects.filter(responsible_name="Familia Nueva").count(), 1)
 
     def test_post_existing_patient_name_still_creates(self):

@@ -13,6 +13,8 @@
         <dd class="col-sm-10"><i>{{ patient.gender }}</i></dd>
         <dt class="col-sm-2 text-md-right">{% translate "Fecha de nacimiento:" %}</dt>
         <dd class="col-sm-10"><i>{{ patient.dob }}</i></dd>
+        <dt class="col-sm-2 text-md-right">{% translate "Fecha de ingreso al programa:" %}</dt>
+        <dd class="col-sm-10"><i>{{ patient.enrolled_on|default:"—" }}</i></dd>
         <dt class="col-sm-2 text-md-right">{% translate "Familia:" %}</dt>
         <dd class="col-sm-10">
             {% if patient.family %}
