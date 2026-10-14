@@ -78,3 +78,8 @@ local_settings.py
 Thumbs.db
 .DS_Store
 nutriapp/anthrocalc/migrations/*
+
+
+
+# Pseudonymization keys map pseudonym back to real names
+scripts/rekey*.csv
