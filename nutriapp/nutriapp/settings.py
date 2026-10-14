@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
+import logging
 import os
+import warnings
 from pathlib import Path
 
 import dj_database_url
@@ -147,8 +149,6 @@ LOCALE_PATHS = [
     BASE_DIR / "locale",
 ]
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 LOGIN_URL = "/admin/login/"
 
 # Static files (CSS, JavaScript, Images)
@@ -164,3 +164,150 @@ MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+class RequestFormatter(logging.Formatter):
+    """
+    Logging formatter that annotates log records with HTTP request method, path,
+    and status code if present on the record (e.g. records emitted by django.request).
+    Safely formats standard non-request records without error.
+    """
+
+    def __init__(self, fmt=None, datefmt=None, style="%", validate=True, format=None, **kwargs):
+        if fmt is None and format is not None:
+            fmt = format
+        super().__init__(fmt=fmt, datefmt=datefmt, style=style, validate=validate)
+
+    def format(self, record):
+        req = getattr(record, "request", None)
+        status = getattr(record, "status_code", None)
+        method = getattr(req, "method", None) if req else None
+        path = getattr(req, "path", None) if req else None
+
+        req_parts = []
+        if method:
+            req_parts.append(f"method={method}")
+        if path:
+            req_parts.append(f"path={path}")
+        if status:
+            req_parts.append(f"status={status}")
+
+        orig_msg = record.msg
+        if req_parts and not getattr(record, "_request_formatted", False):
+            info_str = " ".join(req_parts)
+            if isinstance(record.msg, str):
+                record.msg = f"[{info_str}] {record.msg}"
+                record._request_formatted = True
+
+        try:
+            return super().format(record)
+        finally:
+            record.msg = orig_msg
+            if hasattr(record, "_request_formatted"):
+                del record._request_formatted
+
+
+def resolve_log_level(environ=None, debug=False):
+    """
+    Resolves the log level from DJANGO_LOG_LEVEL or LOG_LEVEL environment variables.
+    Tries DJANGO_LOG_LEVEL first, then falls back to LOG_LEVEL if unset or invalid.
+    Warns on stderr (via warnings.warn) if an invalid log level value is encountered.
+    Defaults to 'DEBUG' if debug=True, otherwise 'INFO'.
+    """
+    if environ is None:
+        environ = os.environ
+
+    valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+    default_level = "DEBUG" if debug else "INFO"
+
+    for var_name in ("DJANGO_LOG_LEVEL", "LOG_LEVEL"):
+        val = environ.get(var_name)
+        if val is not None and val != "":
+            cleaned = val.strip().upper()
+            if cleaned in valid_levels:
+                return cleaned
+            else:
+                warnings.warn(
+                    f"Invalid log level '{val}' in environment variable {var_name}. "
+                    f"Supported levels are: {', '.join(sorted(valid_levels))}.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+    return default_level
+
+
+# Logging configuration
+LOG_LEVEL = resolve_log_level(os.environ, DEBUG)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "()": RequestFormatter,
+            "format": "[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[%(levelname)s] %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "verbose",
+        },
+        "console_stderr": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console_stderr"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "anthrocalc": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "pygrowup": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "matplotlib": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "PIL": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}

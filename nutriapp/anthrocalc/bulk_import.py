@@ -20,11 +20,14 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import openpyxl
 from openpyxl.utils import column_index_from_string, get_column_letter
+
+logger = logging.getLogger(__name__)
 
 GENDER_UNKNOWN = "X"
 

@@ -5,6 +5,8 @@ import numpy
 import pandas as pd
 import pygrowup
 
+logger = logging.getLogger(__name__)
+
 WEIGHT_CONST = "Peso"  ##TODO(tian): make tipo not locale dependent.
 HEIGHT_CONST = "Talla"
 
@@ -36,14 +38,14 @@ class AnthroLoader:
         def extract_fechas_tablas_index(tabla, tipo, expand_i=False):
             if tipo not in [WEIGHT_CONST, HEIGHT_CONST]:
                 raise Exception("not implemented")
-            return tabla.columns.str.extract(f"{tipo}_(\d*-\d*)", expand=expand_i).dropna()
+            return tabla.columns.str.extract(rf"{tipo}_(\d*-\d*)", expand=expand_i).dropna()
 
         self.jornadas_peso = extract_fechas_tablas_index(self.df_data, WEIGHT_CONST)
         self.jornadas_talla = extract_fechas_tablas_index(self.df_data, HEIGHT_CONST)
         if (self.jornadas_peso == self.jornadas_talla).all():
-            logging.debug("Sets of Measures of Weight and Height match.")
+            logger.debug("Sets of Measures of Weight and Height match.")
         else:
-            logging.error("No Match on Weight-Height Columns!")
+            logger.error("No Match on Weight-Height Columns!")
 
         for i, c in enumerate(self.jornadas_peso):
             print(f"Jornadas detectadas: {c}")  ## TODO: maek logging
@@ -62,7 +64,7 @@ class AnthroLoader:
                     dnac = nin["FechaNacimiento"]
                     dmet = self.dates.loc[i][j]
 
-                    logging.debug(f"{dmet} - {dnac} = Days (?)")
+                    logger.debug("Calculating days for measurement date: %s", dmet)
 
                     if isinstance(dmet, numpy.float64) or isinstance(dmet, type(pd.NaT)):
                         wfa_val = numpy.NaN
@@ -76,7 +78,7 @@ class AnthroLoader:
                         )
                         hfa_val = float(self.calculator.lhfa(self.heights.loc[i][j], days, nin["Sexo"]))
                 except Exception as e:
-                    logging.warn("invalid date", e)
+                    logger.warning("invalid date: %s", e, exc_info=True)
                     wfa_val = numpy.NaN
                     hfa_val = numpy.NaN
                 wfas.append(wfa_val)

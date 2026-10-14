@@ -125,6 +125,7 @@
           DEBUG=False
           ALLOWED_HOSTS={{ domain_name }}
           DATABASE_URL=postgres://nutriuser:{{ postgres_password_fact }}@db:5432/nutridb
+          DJANGO_LOG_LEVEL=INFO
 
           # Database settings
           POSTGRES_DB=nutridb

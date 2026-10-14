@@ -63,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Gunicorn setup for nutriapp project structure
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "nutriapp.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "--capture-output", "--enable-stdio-inheritance", "nutriapp.wsgi:application"]

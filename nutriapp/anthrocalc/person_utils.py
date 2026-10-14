@@ -4,6 +4,8 @@ import logging
 import datetime
 import math
 
+logger = logging.getLogger(__name__)
+
 
 def calculate_age_at_date(patient, reference_date):
     """Return age at a reference date in days and months."""
@@ -42,7 +44,7 @@ def calculate_zscore_for_metric(metric):
         elif gender.startswith("f"):
             gender = "female"
         else:
-            logging.error(f"Unknown gender: {patient.gender}")
+            logger.error("Unknown gender: %s", patient.gender)
             return
 
         # In pygrowup2 (jbaldivieso/pygrowup2), we use Observation instead of Calculator
@@ -52,7 +54,7 @@ def calculate_zscore_for_metric(metric):
         try:
             metric.wfaz = float(obs.wfa(metric.weight))
         except Exception as e:
-            logging.warning(f"Error calculating WAZ: {e}")
+            logger.warning("Error calculating WAZ: %s", e)
             metric.wfaz = None
 
         # HAZ: Height-for-age
@@ -61,18 +63,18 @@ def calculate_zscore_for_metric(metric):
             recumbent = not metric.standing_or_upright if metric.standing_or_upright is not None else False
             metric.hfaz = float(obs.lhfa(metric.height, recumbent=recumbent))
         except Exception as e:
-            logging.warning(f"Error calculating HAZ: {e}")
+            logger.warning("Error calculating HAZ: %s", e)
             metric.hfaz = None
 
         # WHZ: Weight-for-height
         try:
             metric.wfhz = float(obs.wfh(metric.weight, metric.height))
         except Exception as e:
-            logging.warning(f"Error calculating WHZ: {e}")
+            logger.warning("Error calculating WHZ: %s", e)
             metric.wfhz = None
 
-    except Exception as e:
-        logging.error(f"Failed to calculate Z-scores: {e}")
+    except Exception:
+        logger.exception("Failed to calculate Z-scores")
 
 
 def fetch_historical_metrics(person_id):
