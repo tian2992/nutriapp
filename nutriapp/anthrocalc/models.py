@@ -215,6 +215,12 @@ class Patient(models.Model):
 
     family = models.ForeignKey(Family, on_delete=models.SET_NULL, null=True, verbose_name="Familia")
 
+    enrolled_on = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de ingreso al programa",
+    )
+
     # New fields for Step 2
     mother_name = models.CharField(max_length=250, null=True, blank=True, verbose_name="Nombre de la madre")
     birth_weight = models.FloatField(null=True, blank=True, verbose_name="Peso al nacer (kg)")

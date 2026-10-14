@@ -93,7 +93,7 @@
             <button onclick="window.print()" class="btn btn-outline-dark">
                 {% translate "Imprimir Planilla de Campo" %}
             </button>
-            <a href="?export=csv" class="btn btn-outline-secondary">
+            <a href="?export=csv&sort={{ roster_sort }}" class="btn btn-outline-secondary">
                 {% translate "Exportar CSV" %}
             </a>
             <a href="{% url 'patients:new' %}?community={{ object.id }}" class="btn btn-primary">
@@ -103,6 +103,11 @@
                 {% translate "Editar" %}
             </a>
         </div>
+    </div>
+    <div class="d-print-none mt-2">
+        <span class="text-muted me-2">{% translate "Ordenar por:" %}</span>
+        <a href="?sort=name" class="btn btn-sm {% if roster_sort == 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">{% translate "Nombre" %}</a>
+        <a href="?sort=dob" class="btn btn-sm {% if roster_sort == 'dob' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">{% translate "Fecha de nacimiento" %}</a>
     </div>
 </div>
 

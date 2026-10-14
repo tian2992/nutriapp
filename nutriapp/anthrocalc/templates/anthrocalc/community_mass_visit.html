@@ -10,6 +10,9 @@
         <h1 class="h3 mb-0">{% translate "Jornada de Medición Masiva" %}</h1>
         <p class="text-muted mb-0">
             <strong>{% translate "Comunidad:" %}</strong> <a href="{% url 'communities:detail' community.id %}">{{ community.name }}</a> ({{ community.municipality }}, {{ community.department }})
+            {% if jornada %}
+                &middot; <a href="{% url 'communities:jornada' community.id jornada.id %}">{% translate "Ver jornada en curso" %}</a>
+            {% endif %}
         </p>
     </div>
     <div>
@@ -19,39 +22,21 @@
     </div>
 </div>
 
-<form method="get" action="{% url 'communities:mass_visit' community.id %}" class="card mb-4 shadow-sm" role="search">
+{# In-page filter only — no GET navigation — so typed measurements are never wiped. #}
+<div class="card mb-4 shadow-sm" role="search">
     <div class="card-body">
         <label for="mass-visit-q" class="form-label fw-bold">{% translate "Buscar niño en esta comunidad" %}</label>
         <div class="input-group">
-            <input type="search" id="mass-visit-q" name="q" value="{{ query }}" class="form-control" placeholder="{% translate 'Nombre o código' %}">
-            <button type="submit" class="btn btn-primary">{% translate "Buscar" %}</button>
-            {% if query %}
-            <a href="{% url 'communities:mass_visit' community.id %}" class="btn btn-outline-secondary">{% translate "Ver listado completo" %}</a>
-            {% endif %}
+            <input type="search" id="mass-visit-q" class="form-control" placeholder="{% translate 'Nombre o código (filtra la tabla sin borrar datos)' %}" autocomplete="off">
+            <button type="button" id="mass-visit-q-clear" class="btn btn-outline-secondary">{% translate "Mostrar todos" %}</button>
         </div>
-        {% if query %}
-        <div class="mt-3" id="mass-visit-search-results">
-            {% if search_results %}
-            <p class="mb-2 text-muted">{% translate "Coincidencias en esta comunidad. Elija una para ir a su fila de medición." %}</p>
-            <div class="list-group">
-                {% for patient in search_results %}
-                <a href="#patient-row-{{ patient.id }}" class="list-group-item list-group-item-action">
-                    <span class="fw-semibold">{{ patient.name }}</span>
-                    <span class="text-muted ms-2">{{ patient.code }}</span>
-                    {% if patient.family %}<span class="ms-2">{{ patient.family.responsible_name }}</span>{% endif %}
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="mb-0 text-muted">{% translate "Ningún niño de esta comunidad coincide." %}</p>
-            {% endif %}
-        </div>
-        {% endif %}
+        <p class="form-text mb-0">{% translate "El filtro no recarga la página: los valores ya ingresados se conservan." %}</p>
     </div>
-</form>
+</div>
 
 <form method="post" id="massVisitForm">
     {% csrf_token %}
+    <input type="hidden" name="jornada_id" value="{{ jornada_id }}">
 
     <!-- Master Record / Header Card -->
     <div class="card mb-4 shadow-sm">
@@ -98,7 +83,7 @@
     <div class="card shadow-sm">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">{% translate "Registro de Mediciones por Niño" %}</h5>
-            <small class="text-muted">{% translate "Deje en blanco los niños ausentes o no medidos." %}</small>
+            <small class="text-muted">{% translate "Guarde por niño o al final. Deje en blanco a los ausentes." %}</small>
         </div>
         <div class="table-responsive">
             <table class="table table-bordered table-hover table-sm align-middle mb-0" id="massEntryTable">
@@ -115,11 +100,14 @@
                         <th style="width: 95px;">{% translate "MUAC (cm)" %}</th>
                         <th style="width: 70px;" class="text-center">{% translate "Edema" %}</th>
                         <th>{% translate "Notas / Observaciones" %}</th>
+                        <th style="width: 160px;">{% translate "Estado / Guardar" %}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for form, pdata in rows %}
-                    <tr id="patient-row-{{ pdata.patient.id }}" class="{% if form.errors %}table-danger{% endif %}">
+                    <tr id="patient-row-{{ pdata.patient.id }}"
+                        data-search-text="{{ pdata.patient.name }} {{ pdata.patient.code }} {{ pdata.patient.mother_name|default:pdata.patient.family.responsible_name|default:'' }}"
+                        class="{% if form.errors %}table-danger{% elif pdata.saved %}table-success{% endif %}">
                         {{ form.patient_id }}
                         <td class="fw-bold">{{ pdata.patient.code }}</td>
                         <td>
@@ -177,10 +165,23 @@
                                 <div class="text-danger small">{{ form.non_field_errors }}</div>
                             {% endif %}
                         </td>
+                        <td class="small">
+                            {% if pdata.saved %}
+                                <div class="mb-1 text-success fw-semibold">✓ {% translate "Guardado" %}</div>
+                                {% if pdata.status_info %}
+                                    {% for badge in pdata.status_info.badges %}
+                                        <span class="badge bg-{{ badge.class }}">{{ badge.text }}</span>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endif %}
+                            <button type="submit" name="save_row" value="{{ pdata.patient.id }}" class="btn btn-sm btn-outline-primary mt-1">
+                                {% translate "Guardar" %}
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center text-muted py-4">
+                        <td colspan="12" class="text-center text-muted py-4">
                             {% translate "No hay niños registrados en esta comunidad para ingresar mediciones." %}
                         </td>
                     </tr>
@@ -200,11 +201,32 @@
 </form>
 
 <script>
-// Fast keyboard navigation: pressing Enter moves down to the same input in the next row
 document.addEventListener("DOMContentLoaded", function() {
     const table = document.getElementById("massEntryTable");
-    if (!table) return;
+    const filterInput = document.getElementById("mass-visit-q");
+    const clearBtn = document.getElementById("mass-visit-q-clear");
 
+    function applyFilter() {
+        if (!table || !filterInput) return;
+        const q = (filterInput.value || "").trim().toLowerCase();
+        table.querySelectorAll("tbody tr[data-search-text]").forEach(function(row) {
+            const hay = (row.getAttribute("data-search-text") || "").toLowerCase();
+            row.style.display = (!q || hay.indexOf(q) !== -1) ? "" : "none";
+        });
+    }
+
+    if (filterInput) {
+        filterInput.addEventListener("input", applyFilter);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener("click", function() {
+            if (filterInput) filterInput.value = "";
+            applyFilter();
+        });
+    }
+
+    // Fast keyboard navigation: pressing Enter moves down to the same input in the next row
+    if (!table) return;
     table.addEventListener("keydown", function(e) {
         if (e.key === "Enter" && !["TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
             e.preventDefault();
@@ -213,7 +235,10 @@ document.addEventListener("DOMContentLoaded", function() {
             const currentRow = currentCell ? currentCell.closest("tr") : null;
             if (currentRow) {
                 const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
-                const nextRow = currentRow.nextElementSibling;
+                let nextRow = currentRow.nextElementSibling;
+                while (nextRow && nextRow.style.display === "none") {
+                    nextRow = nextRow.nextElementSibling;
+                }
                 if (nextRow) {
                     const nextCell = nextRow.children[cellIndex];
                     if (nextCell) {

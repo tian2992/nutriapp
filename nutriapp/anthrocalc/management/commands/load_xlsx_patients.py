@@ -134,6 +134,8 @@ class Command(BaseCommand):
             patient.family = family
 
         patient.mother_name = record.mother_name
+        if record.enrolled_on is not None:
+            patient.enrolled_on = record.enrolled_on
         patient.save()
 
         for occasion in record.occasions:

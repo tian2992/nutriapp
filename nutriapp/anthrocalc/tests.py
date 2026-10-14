@@ -121,6 +121,14 @@ class PatientListMeasurementAndFamilyTests(BaseAuthenticatedTestCase):
             visit = Visit.objects.create(patient=self.patient)
             Metric.objects.create(visit=visit, weight=weight, height=height, standing_or_upright=True)
 
+    def test_patient_detail_shows_nutritional_status_badges(self):
+        response = self.client.get(reverse("patients:detail", args=[self.patient.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["latest_status_info"])
+        self.assertTrue(response.context["latest_status_info"]["badges"])
+        self.assertContains(response, "Estado nutricional")
+        self.assertContains(response, ">HAZ<")
+
     def test_patient_list_shows_measurement_count(self):
         response = self.client.get(reverse("patients:list"))
         self.assertEqual(response.status_code, 200)
@@ -292,6 +300,26 @@ class VisitJornadaFilterTests(BaseAuthenticatedTestCase):
         self.assertIn(self.mv_a, jornada_qs)
         self.assertNotIn(self.mv_b, jornada_qs)
 
+    def test_visit_detail_assigns_jornada_from_same_community(self):
+        visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        response = self.client.post(
+            reverse("visits:detail", args=[visit.id]),
+            {"action": "assign_jornada", "multiple_visit": self.mv_a.id},
+        )
+        self.assertRedirects(response, reverse("visits:detail", args=[visit.id]))
+        visit.refresh_from_db()
+        self.assertEqual(visit.multiple_visit_id, self.mv_a.id)
+
+    def test_visit_detail_rejects_jornada_from_other_community(self):
+        visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        response = self.client.post(
+            reverse("visits:detail", args=[visit.id]),
+            {"action": "assign_jornada", "multiple_visit": self.mv_b.id},
+        )
+        self.assertRedirects(response, reverse("visits:detail", args=[visit.id]))
+        visit.refresh_from_db()
+        self.assertIsNone(visit.multiple_visit_id)
+
 
 class CommunityModelAndRelationshipTests(TestCase):
     def setUp(self):
@@ -353,6 +381,31 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         self.assertContains(response, "Anita Gómez")
         self.assertContains(response, "PAC001")
         self.assertContainsFloats(response, "12.5", "88.0")
+
+    def test_community_roster_sort_by_name_or_dob(self):
+        Patient.objects.create(
+            code="PAC002",
+            name="Berta Gómez",
+            gender="F",
+            dob=datetime.date(2021, 1, 1),
+            family=self.family,
+        )
+        url = reverse("communities:detail", args=[self.community.id])
+
+        by_name = self.client.get(url)
+        self.assertEqual(by_name.context["roster_sort"], "name")
+        self.assertEqual(
+            [row["patient"].name for row in by_name.context["roster"]],
+            ["Anita Gómez", "Berta Gómez"],
+        )
+
+        by_dob = self.client.get(url + "?sort=dob")
+        self.assertEqual(by_dob.context["roster_sort"], "dob")
+        self.assertEqual(
+            [row["patient"].name for row in by_dob.context["roster"]],
+            ["Berta Gómez", "Anita Gómez"],
+        )
+        self.assertContains(by_dob, 'href="?export=csv&sort=dob"')
 
     def test_community_detail_csv_export(self):
         visit = Visit.objects.create(patient=self.patient, date=timezone.now())
@@ -419,6 +472,70 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         self.assertContains(detail, "Anita Gómez")
         self.assertContains(detail, "Ana Promotora")
         self.assertContainsFloats(detail, "11.2", "82.0")
+
+    def test_jornada_add_child_preserves_existing_metrics(self):
+        mv = MultipleVisit.objects.create(
+            community=self.community,
+            date=timezone.now(),
+            responsible_name="Ana Promotora",
+        )
+        existing_visit = Visit.objects.create(
+            patient=self.patient, date=mv.date, multiple_visit=mv
+        )
+        existing_metric = Metric.objects.create(
+            visit=existing_visit, weight=11.2, height=82.0, standing_or_upright=True
+        )
+        other = Patient.objects.create(
+            code="PAC003",
+            name="Carla Gómez",
+            gender="F",
+            dob=datetime.date(2022, 6, 1),
+            family=self.family,
+        )
+        jornada_url = reverse("communities:jornada", args=[self.community.id, mv.id])
+
+        response = self.client.post(
+            jornada_url,
+            {"action": "add_patient", "patient_id": other.id},
+        )
+        self.assertRedirects(response, jornada_url)
+
+        existing_visit.refresh_from_db()
+        existing_metric.refresh_from_db()
+        self.assertEqual(existing_visit.multiple_visit_id, mv.id)
+        self.assertEqual(existing_metric.weight, 11.2)
+        self.assertEqual(existing_metric.height, 82.0)
+        self.assertEqual(Metric.objects.filter(visit__multiple_visit=mv).count(), 1)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        added = Visit.objects.get(multiple_visit=mv, patient=other)
+        self.assertFalse(Metric.objects.filter(visit=added).exists())
+
+        # Second include is a no-op and still leaves prior data intact.
+        response = self.client.post(
+            jornada_url,
+            {"action": "add_patient", "patient_id": other.id},
+        )
+        self.assertRedirects(response, jornada_url)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        existing_metric.refresh_from_db()
+        self.assertEqual(existing_metric.weight, 11.2)
+
+    def test_jornada_add_child_search_excludes_children_already_on_jornada(self):
+        mv = MultipleVisit.objects.create(community=self.community, date=timezone.now())
+        Visit.objects.create(patient=self.patient, date=mv.date, multiple_visit=mv)
+        other = Patient.objects.create(
+            code="PAC004",
+            name="Diana Gómez",
+            gender="F",
+            dob=datetime.date(2022, 7, 1),
+            family=self.family,
+        )
+        jornada_url = reverse("communities:jornada", args=[self.community.id, mv.id])
+        response = self.client.get(jornada_url, {"add": "1", "q": "Gómez"})
+        self.assertEqual(response.status_code, 200)
+        ids = [p.id for p in response.context["search_results"]]
+        self.assertIn(other.id, ids)
+        self.assertNotIn(self.patient.id, ids)
 
 
 class CommunityFilteringTests(BaseAuthenticatedTestCase):
@@ -554,13 +671,15 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
                 "name": "Carla Nueva",
                 "gender": "F",
                 "dob": "2023-03-10",
+                "enrolled_on": "2024-01-15",
                 "community": self.community.id,
                 "new_family_name": "Familia Nueva",
             },
         )
-        self.assertRedirects(response, reverse("patients:list"))
         patient = Patient.objects.get(name="Carla Nueva")
+        self.assertRedirects(response, reverse("patients:detail", args=[patient.id]))
         self.assertEqual(patient.family.responsible_name, "Familia Nueva")
+        self.assertEqual(patient.enrolled_on, datetime.date(2024, 1, 15))
         self.assertEqual(Family.objects.filter(responsible_name="Familia Nueva").count(), 1)
 
     def test_post_existing_patient_name_still_creates(self):
@@ -574,7 +693,8 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
                 "new_family_name": "Otra Familia Distinta",
             },
         )
-        self.assertRedirects(response, reverse("patients:list"))
+        created = Patient.objects.filter(name="Diego Repetido").exclude(pk=self.existing.pk).get()
+        self.assertRedirects(response, reverse("patients:detail", args=[created.id]))
         self.assertEqual(Patient.objects.filter(name="Diego Repetido").count(), 2)
 
     def test_post_existing_family_name_requires_confirm_flag(self):
@@ -596,9 +716,9 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
 
         payload["confirm_new_family"] = "1"
         response = self.client.post(reverse("patients:new"), payload)
-        self.assertRedirects(response, reverse("patients:list"))
-        self.assertEqual(Family.objects.filter(responsible_name="Familia Existente").count(), 2)
         created = Patient.objects.get(name="Niño Distinto")
+        self.assertRedirects(response, reverse("patients:detail", args=[created.id]))
+        self.assertEqual(Family.objects.filter(responsible_name="Familia Existente").count(), 2)
         self.assertNotEqual(created.family_id, self.family.id)
         self.assertEqual(created.family.responsible_name, "Familia Existente")
 
@@ -677,6 +797,7 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
             "date": "2026-08-17",
             "responsible_name": "Promotor Test",
             "notes": "Jornada exitosa",
+            "jornada_id": "",
             "rows-TOTAL_FORMS": "3",
             "rows-INITIAL_FORMS": "3",
             "rows-MIN_NUM_FORMS": "0",
@@ -714,6 +835,9 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
         self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
         mv = MultipleVisit.objects.get(community=self.community)
         self.assertEqual(mv.responsible_name, "Promotor Test")
+        self.assertRedirects(
+            response, reverse("communities:jornada", args=[self.community.id, mv.id])
+        )
 
         # Visits created: 2 visits (Child A and Child B), Child C skipped
         self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
@@ -734,6 +858,63 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
         m2 = Metric.objects.get(visit=v2)
         self.assertEqual(m2.weight, 10.1)
         self.assertTrue(m2.edema)
+
+    def test_mass_visit_per_row_save_keeps_other_typed_values(self):
+        data = {
+            "date": "2026-08-17",
+            "responsible_name": "Promotor Test",
+            "notes": "",
+            "jornada_id": "",
+            "save_row": str(self.p1.id),
+            "rows-TOTAL_FORMS": "3",
+            "rows-INITIAL_FORMS": "3",
+            "rows-MIN_NUM_FORMS": "0",
+            "rows-MAX_NUM_FORMS": "1000",
+            "rows-0-patient_id": str(self.p1.id),
+            "rows-0-weight": "14.2",
+            "rows-0-height": "95.5",
+            "rows-0-standing_or_upright": "True",
+            "rows-0-muac": "",
+            "rows-0-edema": "",
+            "rows-0-notes": "",
+            "rows-1-patient_id": str(self.p2.id),
+            "rows-1-weight": "10.1",
+            "rows-1-height": "80.0",
+            "rows-1-standing_or_upright": "False",
+            "rows-1-muac": "",
+            "rows-1-edema": "",
+            "rows-1-notes": "borrador B",
+            "rows-2-patient_id": str(self.p3.id),
+            "rows-2-weight": "",
+            "rows-2-height": "",
+            "rows-2-standing_or_upright": "",
+            "rows-2-muac": "",
+            "rows-2-edema": "",
+            "rows-2-notes": "",
+        }
+        response = self.client.post(reverse("communities:mass_visit", args=[self.community.id]), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
+        mv = MultipleVisit.objects.get(community=self.community)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 1)
+        self.assertTrue(Metric.objects.filter(visit__patient=self.p1, visit__multiple_visit=mv).exists())
+        self.assertFalse(Visit.objects.filter(patient=self.p2, multiple_visit=mv).exists())
+
+        # Other row's typed values are still in the re-rendered form (not wiped).
+        self.assertContains(response, 'value="10.1"')
+        self.assertContains(response, "borrador B")
+        self.assertContains(response, "Guardado")
+        self.assertEqual(str(response.context["jornada_id"]), str(mv.id))
+
+        # Saving B onto the same jornada must not drop A's metric.
+        data["jornada_id"] = str(mv.id)
+        data["save_row"] = str(self.p2.id)
+        response = self.client.post(reverse("communities:mass_visit", args=[self.community.id]), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        m1 = Metric.objects.get(visit__patient=self.p1, visit__multiple_visit=mv)
+        self.assertEqual(m1.weight, 14.2)
 
     def test_mass_measurement_row_form_validation(self):
         # Weight provided without height -> invalid
@@ -1431,16 +1612,21 @@ class MassVisitChildSearchTests(BaseAuthenticatedTestCase):
             family=other_family,
         )
 
-    def test_search_limits_matches_to_this_community_and_creates_nobody(self):
+    def test_roster_is_community_scoped_and_filter_is_in_page(self):
+        """Search no longer GETs away from the form (that wiped typed rows).
+
+        Filtering is client-side over community rows already rendered.
+        """
         before = Patient.objects.count()
         url = reverse("communities:mass_visit", args=[self.community.id])
-        response = self.client.get(url + "?q=Lucia")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Madre Buscada")
-        self.assertContains(response, f"#patient-row-{self.patient.id}")
+        self.assertContains(response, f'id="patient-row-{self.patient.id}"')
+        self.assertContains(response, 'id="mass-visit-q"')
         self.assertNotContains(response, "Madre Ajena")
+        self.assertNotContains(response, f'id="patient-row-{self.other.id}"')
         self.assertEqual(Patient.objects.count(), before)
-        self.assertEqual(self.client.get(url + "?q=BUS-9").context["search_results"], [])
 
 
 class JornadaStatusBadgeTests(BaseAuthenticatedTestCase):
@@ -1461,3 +1647,45 @@ class JornadaStatusBadgeTests(BaseAuthenticatedTestCase):
         response = self.client.get(reverse("communities:jornada", args=[community.id, jornada.id]))
         self.assertContains(response, "Desnutrición Aguda Severa")
         self.assertNotContains(response, 'name="diagnosis"')
+
+
+class RekeyPatientsCommandTests(TestCase):
+    """Decode/rekey must restore child, mother, and family names from the key CSV."""
+
+    def test_rekey_restores_patient_mother_and_family_names(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        from django.core.management import call_command
+
+        from anthrocalc.management.commands.rekey_patients import unmangle
+
+        self.assertEqual(unmangle("3.09165531E+028"), "309165531E20")
+
+        family = Family.objects.create(responsible_name="aaaabbbbcccc")
+        patient = Patient.objects.create(
+            code="RK01",
+            name="dddddddddddd",
+            gender="F",
+            dob=datetime.date(2021, 1, 1),
+            family=family,
+            mother_name="eeeeeeeeeeee",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            key_path = Path(tmp) / "rekey.csv"
+            with key_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["original", "pseudonym"])
+                writer.writeheader()
+                writer.writerow({"original": "María López", "pseudonym": "dddddddddddd"})
+                writer.writerow({"original": "Ana López", "pseudonym": "eeeeeeeeeeee"})
+                writer.writerow({"original": "Familia López", "pseudonym": "aaaabbbbcccc"})
+
+            call_command("rekey_patients", rekey=[str(key_path)])
+
+        patient.refresh_from_db()
+        family.refresh_from_db()
+        self.assertEqual(patient.name, "María López")
+        self.assertEqual(patient.mother_name, "Ana López")
+        self.assertEqual(family.responsible_name, "Familia López")

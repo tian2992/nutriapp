@@ -25,7 +25,7 @@ class FamilyAdmin(admin.ModelAdmin):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "gender", "family", "get_community", "dob")
+    list_display = ("code", "name", "gender", "family", "get_community", "dob", "enrolled_on")
     search_fields = ("code", "name")
     list_filter = ("gender", "family__community", "family")
 

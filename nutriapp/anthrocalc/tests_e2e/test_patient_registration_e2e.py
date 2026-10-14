@@ -34,6 +34,10 @@ class PatientRegistrationE2ETests(PlaywrightTestCase):
         self.assertIsNotNone(patient.family)
         self.assertEqual(patient.family.responsible_name, "Familia Nueva E2E")
         self.assertEqual(patient.family.community.name, "Comunidad Nueva E2E")
+        self.assertTrue(
+            self.page.url.rstrip("/").endswith(f"/patient/{patient.id}"),
+            f"expected redirect to patient detail, got {self.page.url}",
+        )
 
     def test_registering_a_name_that_already_exists_surfaces_a_duplicate_warning(self):
         self.login_as_field_agent()

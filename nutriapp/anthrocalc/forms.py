@@ -130,6 +130,7 @@ class PatientForm(forms.ModelForm):
             "name",
             "gender",
             "dob",
+            "enrolled_on",
             "community",
             "new_community_name",
             "family",
@@ -139,12 +140,16 @@ class PatientForm(forms.ModelForm):
             "birth_length",
             "maternal_education",
         ]
+        widgets = {
+            "enrolled_on": forms.DateInput(attrs={"type": "date"}),
+        }
 
     field_order = [
         "code",
         "name",
         "gender",
         "dob",
+        "enrolled_on",
         "community",
         "new_community_name",
         "family",

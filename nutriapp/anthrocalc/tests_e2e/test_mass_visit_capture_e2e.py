@@ -35,18 +35,20 @@ class MassVisitCaptureE2ETests(PlaywrightTestCase):
 
     def test_fills_one_row_leaves_one_blank_and_only_saves_the_filled_one(self):
         self.page.goto(f"{self.live_server_url}/communities/{self.community.id}/mass-visit/")
+        self.page.wait_for_load_state("networkidle")
+        self.page.fill("#id_date", "2026-08-17")
 
         # Row 0 = Ana (filled), row 1 = Beto (left blank on purpose). Both
         # rows' hidden rows-N-patient_id are already populated by the
-        # server on GET (views.py:651) - nothing to fill for row 1, its
-        # formset entry validates fine with weight/height empty (both are
-        # required=False on MassMeasurementRowForm) and just gets skipped
-        # by CommunityMassVisit.post's `if form.has_data()` check.
+        # server on GET - nothing to fill for row 1, its formset entry
+        # validates fine with weight/height empty and gets skipped by
+        # CommunityMassVisit.post's `if form.has_data()` check.
         self.page.fill("#id_rows-0-weight", "9.5")
         self.page.fill("#id_rows-0-height", "72.3")
         self.page.select_option("#id_rows-0-standing_or_upright", "False")
 
-        self.page.click("#massVisitForm button[type=submit], #massVisitForm input[type=submit]")
+        # Prefer the batch footer button — per-row "Guardar" buttons are also type=submit.
+        self.page.locator("#massVisitForm button.btn-success").click()
         self.page.wait_for_load_state("networkidle")
 
         self.assertEqual(Visit.objects.count(), 1)
@@ -58,3 +60,7 @@ class MassVisitCaptureE2ETests(PlaywrightTestCase):
         self.assertEqual(metric.height, 72.3)
 
         self.assertFalse(Visit.objects.filter(patient=self.patient_skipped).exists())
+        self.assertTrue(
+            "/jornada/" in self.page.url,
+            f"expected redirect to jornada detail after batch save, got {self.page.url}",
+        )
