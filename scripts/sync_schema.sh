@@ -5,12 +5,15 @@
 #   sync_schema.sh [--mode MODE] [--data-dir DIR] [--repair] [--no-makemigrations]
 #
 # Without --repair it only reports: makemigrations, migrate --run-syncdb, then
-# a table-and-column comparison against the database (exit 4 on drift).
-# With --repair it also adds the missing tables and columns.
+# a comparison of tables, columns, and nullability against the database
+# (exit 4 on drift).
+# With --repair it adds missing tables/columns and drops NOT NULL on columns
+# the models mark as nullable (the usual gap when migrations were never
+# checked in and the live DB still has the original BooleanField constraints).
 #
 # Typical use on a server whose database predates a model change:
-#   scripts/sync_schema.sh            # see what is missing
-#   scripts/sync_schema.sh --repair   # add it
+#   scripts/sync_schema.sh            # see what is missing / too strict
+#   scripts/sync_schema.sh --repair   # fix it
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
