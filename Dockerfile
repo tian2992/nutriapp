@@ -56,9 +56,9 @@ USER appuser
 
 EXPOSE 8000
 
-# Health check (assuming admin is enabled in urls.py)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8000/admin/ || exit 1
+# Health check
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/ || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
