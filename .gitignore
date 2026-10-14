@@ -6,6 +6,9 @@ venv/
 /nutriapp/db.sqlite3
 /nutriapp/exports/
 
+# Workbooks, fixtures and backups handled by scripts/nutri_data.sh (might contain sensitive data)
+/data/
+
 #All of this local files should not be commited
 .env
 .postgres_password
