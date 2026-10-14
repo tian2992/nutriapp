@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import context
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now
 from django.views import View
@@ -844,161 +845,277 @@ class JornadaDetail(DetailView):
 class CommunityMassVisit(View):
     template_name = "anthrocalc/community_mass_visit.html"
 
-    def get_patients_data(self, community):
+    def get_patients_data(self, community, multiple_visit=None):
         patients = (
             Patient.objects.filter(family__community=community)
             .select_related("family")
             .order_by("name")
         )
+        saved_by_patient = {}
+        if multiple_visit is not None:
+            for visit in Visit.objects.filter(multiple_visit=multiple_visit).select_related(
+                "metric"
+            ):
+                try:
+                    metric = visit.metric
+                except Metric.DoesNotExist:
+                    metric = None
+                saved_by_patient[visit.patient_id] = (visit, metric)
+
         data = []
         today = now().date()
         for p in patients:
             age_info = calculate_age_at_date(p, today)
-            last_visit = (
-                Visit.objects.filter(patient=p)
-                .order_by("-date")
-                .select_related("metric")
-                .first()
-            )
-            last_metric = None
-            if last_visit:
+            visits_with_metrics = []
+            for visit in (
+                Visit.objects.filter(patient=p).order_by("date").select_related("metric")
+            ):
                 try:
-                    last_metric = last_visit.metric
+                    metric = visit.metric
                 except Metric.DoesNotExist:
-                    last_metric = None
+                    continue
+                if metric is not None:
+                    visits_with_metrics.append((visit, metric))
+
+            saved_visit, saved_metric = saved_by_patient.get(p.id, (None, None))
+            if saved_metric is not None:
+                prev_visit, prev_metric = None, None
+                for visit, metric in visits_with_metrics:
+                    if visit.id == saved_visit.id:
+                        break
+                    prev_visit, prev_metric = visit, metric
+                status_info = get_nutritional_status(saved_metric, prev_metric)
+            else:
+                status_info = None
+                if visits_with_metrics:
+                    prev_visit, prev_metric = visits_with_metrics[-1]
+                else:
+                    prev_visit, prev_metric = None, None
+
             data.append({
                 "patient": p,
                 "age_months": age_info.get("months"),
-                "prev_visit": last_visit,
-                "prev_metric": last_metric,
+                "prev_visit": prev_visit,
+                "prev_metric": prev_metric,
+                "saved": saved_metric is not None,
+                "status_info": status_info,
+                "saved_metric": saved_metric,
+                "saved_visit": saved_visit,
             })
         return data
 
-    def _search_results(self, community, query):
-        if not query:
-            return []
-        return list(
-            Patient.objects.filter(family__community=community)
-            .filter(Q(name__icontains=query) | Q(code__icontains=query))
-            .select_related("family")
-            .order_by("name", "pk")
+    def _jornada_datetime(self, jornada_date):
+        jornada_datetime = datetime.datetime.combine(jornada_date, datetime.time(12, 0))
+        if settings.USE_TZ:
+            from django.utils.timezone import get_current_timezone, make_aware
+
+            try:
+                jornada_datetime = make_aware(jornada_datetime, get_current_timezone())
+            except Exception:
+                pass
+        return jornada_datetime
+
+    def _resolve_jornada(self, community, header_cleaned, jornada_id):
+        """Reuse the in-progress jornada when present; never create a duplicate mid-capture."""
+        responsible_name = header_cleaned.get("responsible_name", "") or ""
+        notes = header_cleaned.get("notes", "") or ""
+        jornada_datetime = self._jornada_datetime(header_cleaned["date"])
+
+        if jornada_id:
+            existing = MultipleVisit.objects.filter(pk=jornada_id, community=community).first()
+            if existing is not None:
+                existing.date = jornada_datetime
+                existing.responsible_name = responsible_name
+                existing.notes = notes or None
+                existing.save(update_fields=["date", "responsible_name", "notes"])
+                return existing
+
+        return MultipleVisit.objects.create(
+            community=community,
+            date=jornada_datetime,
+            responsible_name=responsible_name,
+            notes=notes or None,
+        )
+
+    @staticmethod
+    def _standing_value(standing_val):
+        if standing_val == "True":
+            return True
+        if standing_val == "False":
+            return False
+        return None
+
+    def _save_measurement_row(self, form, multiple_visit, entered_by):
+        """Create or update this child's Visit+Metric on the jornada; leave other rows alone."""
+        patient = Patient.objects.get(id=form.cleaned_data["patient_id"])
+        row_notes = form.cleaned_data.get("notes", "") or None
+        visit, created = Visit.objects.get_or_create(
+            patient=patient,
+            multiple_visit=multiple_visit,
+            defaults={
+                "date": multiple_visit.date,
+                "notes": row_notes,
+                "entered_by": entered_by,
+            },
+        )
+        if not created:
+            visit.date = multiple_visit.date
+            visit.notes = row_notes
+            if entered_by and visit.entered_by_id is None:
+                visit.entered_by = entered_by
+            visit.save(update_fields=["date", "notes", "entered_by"])
+
+        defaults = {
+            "weight": form.cleaned_data["weight"],
+            "height": form.cleaned_data["height"],
+            "standing_or_upright": self._standing_value(form.cleaned_data.get("standing_or_upright")),
+            "muac": form.cleaned_data.get("muac"),
+            "edema": form.cleaned_data.get("edema"),
+        }
+        try:
+            metric = visit.metric
+        except Metric.DoesNotExist:
+            metric = None
+        if metric is None:
+            metric = Metric(visit=visit, **defaults)
+            metric.save()
+        else:
+            for key, value in defaults.items():
+                setattr(metric, key, value)
+            metric.save()
+        return visit, metric
+
+    @staticmethod
+    def _row_initial_from_saved(item):
+        row = {"patient_id": item["patient"].id}
+        metric = item.get("saved_metric")
+        visit = item.get("saved_visit")
+        if metric is None or visit is None:
+            return row
+        row.update({
+            "weight": metric.weight,
+            "height": metric.height,
+            "standing_or_upright": (
+                "True"
+                if metric.standing_or_upright is True
+                else "False"
+                if metric.standing_or_upright is False
+                else ""
+            ),
+            "muac": metric.muac,
+            "edema": metric.edema,
+            "notes": visit.notes or "",
+        })
+        return row
+
+    def _render(self, request, community, header_form, formset, patients_data, jornada=None):
+        rows = list(zip(formset.forms, patients_data))
+        return render(
+            request,
+            self.template_name,
+            {
+                "community": community,
+                "header_form": header_form,
+                "formset": formset,
+                "rows": rows,
+                "jornada": jornada,
+                "jornada_id": jornada.id if jornada else "",
+            },
         )
 
     def get(self, request, pk):
         community = get_object_or_404(Community, pk=pk)
-        patients_data = self.get_patients_data(community)
-        query = (request.GET.get("q") or "").strip()
+        jornada_id = (request.GET.get("jornada") or "").strip()
+        jornada = None
+        if jornada_id:
+            jornada = MultipleVisit.objects.filter(pk=jornada_id, community=community).first()
+        patients_data = self.get_patients_data(community, multiple_visit=jornada)
 
-        header_form = MassMeasurementHeaderForm(initial={
+        header_initial = {
             "date": now().date(),
             "responsible_name": (
                 request.user.get_full_name() or request.user.username
-                if request.user.is_authenticated else ""
+                if request.user.is_authenticated
+                else ""
             ),
-        })
+        }
+        if jornada is not None:
+            header_initial = {
+                "date": timezone_local_date(jornada.date),
+                "responsible_name": jornada.responsible_name or header_initial["responsible_name"],
+                "notes": jornada.notes or "",
+            }
 
+        header_form = MassMeasurementHeaderForm(initial=header_initial)
         MassFormSet = formset_factory(MassMeasurementRowForm, extra=0)
-        initial_rows = [{"patient_id": item["patient"].id} for item in patients_data]
+        initial_rows = [self._row_initial_from_saved(item) for item in patients_data]
         formset = MassFormSet(initial=initial_rows, prefix="rows")
-
-        rows = list(zip(formset.forms, patients_data))
-
-        return render(
-            request,
-            self.template_name,
-            {
-                "community": community,
-                "header_form": header_form,
-                "formset": formset,
-                "rows": rows,
-                "query": query,
-                "search_results": self._search_results(community, query),
-            },
-        )
+        return self._render(request, community, header_form, formset, patients_data, jornada)
 
     def post(self, request, pk):
         community = get_object_or_404(Community, pk=pk)
-        patients_data = self.get_patients_data(community)
+        raw_jornada_id = (request.POST.get("jornada_id") or "").strip()
+        jornada = None
+        if raw_jornada_id:
+            jornada = MultipleVisit.objects.filter(pk=raw_jornada_id, community=community).first()
 
+        patients_data = self.get_patients_data(community, multiple_visit=jornada)
         header_form = MassMeasurementHeaderForm(request.POST)
         MassFormSet = formset_factory(MassMeasurementRowForm, extra=0)
         formset = MassFormSet(request.POST, prefix="rows")
+        save_row_id = (request.POST.get("save_row") or "").strip()
+        entered_by = request.user if request.user.is_authenticated else None
 
-        if header_form.is_valid() and formset.is_valid():
-            jornada_date = header_form.cleaned_data["date"]
-            responsible_name = header_form.cleaned_data.get("responsible_name", "")
-            notes = header_form.cleaned_data.get("notes", "")
+        if not (header_form.is_valid() and formset.is_valid()):
+            return self._render(request, community, header_form, formset, patients_data, jornada)
 
-            jornada_datetime = datetime.datetime.combine(jornada_date, datetime.time(12, 0))
-            if settings.USE_TZ:
-                from django.utils.timezone import get_current_timezone, make_aware
-                try:
-                    jornada_datetime = make_aware(jornada_datetime, get_current_timezone())
-                except Exception:
-                    pass
+        if save_row_id:
+            target = None
+            for form in formset.forms:
+                if str(form.cleaned_data.get("patient_id")) == save_row_id:
+                    target = form
+                    break
+            if target is None or not target.has_data():
+                messages.error(
+                    request,
+                    "Para guardar un niño debe ingresar peso y talla en su fila.",
+                )
+                return self._render(request, community, header_form, formset, patients_data, jornada)
 
-            created_count = 0
-            entered_by = request.user if request.user.is_authenticated else None
             with transaction.atomic():
-                multiple_visit = MultipleVisit.objects.create(
-                    community=community,
-                    date=jornada_datetime,
-                    responsible_name=responsible_name,
-                    notes=notes,
-                )
+                jornada = self._resolve_jornada(community, header_form.cleaned_data, raw_jornada_id)
+                self._save_measurement_row(target, jornada, entered_by)
 
-                for form in formset.forms:
-                    if form.has_data():
-                        patient_id = form.cleaned_data["patient_id"]
-                        patient = Patient.objects.get(id=patient_id)
-                        row_notes = form.cleaned_data.get("notes", "")
-                        weight = form.cleaned_data["weight"]
-                        height = form.cleaned_data["height"]
-                        standing_val = form.cleaned_data.get("standing_or_upright")
-                        standing_or_upright = (
-                            True if standing_val == "True" else False if standing_val == "False" else None
-                        )
-                        muac = form.cleaned_data.get("muac")
-                        edema = form.cleaned_data.get("edema")
+            # Keep other rows' typed values from this POST; refresh saved badges from DB.
+            patients_data = self.get_patients_data(community, multiple_visit=jornada)
+            messages.success(request, "Medición guardada.")
+            return self._render(request, community, header_form, formset, patients_data, jornada)
 
-                        visit = Visit.objects.create(
-                            patient=patient,
-                            date=jornada_datetime,
-                            multiple_visit=multiple_visit,
-                            notes=row_notes if row_notes else None,
-                            entered_by=entered_by,
-                        )
-                        metric = Metric(
-                            visit=visit,
-                            weight=weight,
-                            height=height,
-                            standing_or_upright=standing_or_upright,
-                            muac=muac,
-                            edema=edema,
-                        )
-                        metric.save()
-                        created_count += 1
+        created_count = 0
+        with transaction.atomic():
+            jornada = self._resolve_jornada(community, header_form.cleaned_data, raw_jornada_id)
+            for form in formset.forms:
+                if form.has_data():
+                    self._save_measurement_row(form, jornada, entered_by)
+                    created_count += 1
 
-            if created_count > 0:
-                messages.success(
-                    request,
-                    f"Se registraron exitosamente {created_count} mediciones en la jornada para {community.name}.",
-                )
-            else:
-                messages.info(
-                    request,
-                    f"Se creó la jornada para {community.name}, pero no se ingresaron mediciones.",
-                )
-            return redirect(reverse("communities:detail", args=[community.id]))
+        if created_count > 0:
+            messages.success(
+                request,
+                f"Se registraron exitosamente {created_count} mediciones en la jornada para {community.name}.",
+            )
+        else:
+            messages.info(
+                request,
+                f"Se creó la jornada para {community.name}, pero no se ingresaron mediciones.",
+            )
+        return redirect(jornada.get_absolute_url())
 
-        rows = list(zip(formset.forms, patients_data))
-        return render(
-            request,
-            self.template_name,
-            {
-                "community": community,
-                "header_form": header_form,
-                "formset": formset,
-                "rows": rows,
-            },
-        )
+
+def timezone_local_date(value):
+    """Date part of a datetime, in the active timezone when aware."""
+    if value is None:
+        return now().date()
+    if timezone.is_aware(value):
+        return timezone.localtime(value).date()
+    return value.date()

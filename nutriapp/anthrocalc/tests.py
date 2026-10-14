@@ -797,6 +797,7 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
             "date": "2026-08-17",
             "responsible_name": "Promotor Test",
             "notes": "Jornada exitosa",
+            "jornada_id": "",
             "rows-TOTAL_FORMS": "3",
             "rows-INITIAL_FORMS": "3",
             "rows-MIN_NUM_FORMS": "0",
@@ -834,6 +835,9 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
         self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
         mv = MultipleVisit.objects.get(community=self.community)
         self.assertEqual(mv.responsible_name, "Promotor Test")
+        self.assertRedirects(
+            response, reverse("communities:jornada", args=[self.community.id, mv.id])
+        )
 
         # Visits created: 2 visits (Child A and Child B), Child C skipped
         self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
@@ -854,6 +858,63 @@ class MassMeasurementAndJornadaTests(BaseAuthenticatedTestCase):
         m2 = Metric.objects.get(visit=v2)
         self.assertEqual(m2.weight, 10.1)
         self.assertTrue(m2.edema)
+
+    def test_mass_visit_per_row_save_keeps_other_typed_values(self):
+        data = {
+            "date": "2026-08-17",
+            "responsible_name": "Promotor Test",
+            "notes": "",
+            "jornada_id": "",
+            "save_row": str(self.p1.id),
+            "rows-TOTAL_FORMS": "3",
+            "rows-INITIAL_FORMS": "3",
+            "rows-MIN_NUM_FORMS": "0",
+            "rows-MAX_NUM_FORMS": "1000",
+            "rows-0-patient_id": str(self.p1.id),
+            "rows-0-weight": "14.2",
+            "rows-0-height": "95.5",
+            "rows-0-standing_or_upright": "True",
+            "rows-0-muac": "",
+            "rows-0-edema": "",
+            "rows-0-notes": "",
+            "rows-1-patient_id": str(self.p2.id),
+            "rows-1-weight": "10.1",
+            "rows-1-height": "80.0",
+            "rows-1-standing_or_upright": "False",
+            "rows-1-muac": "",
+            "rows-1-edema": "",
+            "rows-1-notes": "borrador B",
+            "rows-2-patient_id": str(self.p3.id),
+            "rows-2-weight": "",
+            "rows-2-height": "",
+            "rows-2-standing_or_upright": "",
+            "rows-2-muac": "",
+            "rows-2-edema": "",
+            "rows-2-notes": "",
+        }
+        response = self.client.post(reverse("communities:mass_visit", args=[self.community.id]), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
+        mv = MultipleVisit.objects.get(community=self.community)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 1)
+        self.assertTrue(Metric.objects.filter(visit__patient=self.p1, visit__multiple_visit=mv).exists())
+        self.assertFalse(Visit.objects.filter(patient=self.p2, multiple_visit=mv).exists())
+
+        # Other row's typed values are still in the re-rendered form (not wiped).
+        self.assertContains(response, 'value="10.1"')
+        self.assertContains(response, "borrador B")
+        self.assertContains(response, "Guardado")
+        self.assertEqual(str(response.context["jornada_id"]), str(mv.id))
+
+        # Saving B onto the same jornada must not drop A's metric.
+        data["jornada_id"] = str(mv.id)
+        data["save_row"] = str(self.p2.id)
+        response = self.client.post(reverse("communities:mass_visit", args=[self.community.id]), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MultipleVisit.objects.filter(community=self.community).count(), 1)
+        self.assertEqual(Visit.objects.filter(multiple_visit=mv).count(), 2)
+        m1 = Metric.objects.get(visit__patient=self.p1, visit__multiple_visit=mv)
+        self.assertEqual(m1.weight, 14.2)
 
     def test_mass_measurement_row_form_validation(self):
         # Weight provided without height -> invalid
@@ -1551,16 +1612,21 @@ class MassVisitChildSearchTests(BaseAuthenticatedTestCase):
             family=other_family,
         )
 
-    def test_search_limits_matches_to_this_community_and_creates_nobody(self):
+    def test_roster_is_community_scoped_and_filter_is_in_page(self):
+        """Search no longer GETs away from the form (that wiped typed rows).
+
+        Filtering is client-side over community rows already rendered.
+        """
         before = Patient.objects.count()
         url = reverse("communities:mass_visit", args=[self.community.id])
-        response = self.client.get(url + "?q=Lucia")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Madre Buscada")
-        self.assertContains(response, f"#patient-row-{self.patient.id}")
+        self.assertContains(response, f'id="patient-row-{self.patient.id}"')
+        self.assertContains(response, 'id="mass-visit-q"')
         self.assertNotContains(response, "Madre Ajena")
+        self.assertNotContains(response, f'id="patient-row-{self.other.id}"')
         self.assertEqual(Patient.objects.count(), before)
-        self.assertEqual(self.client.get(url + "?q=BUS-9").context["search_results"], [])
 
 
 class JornadaStatusBadgeTests(BaseAuthenticatedTestCase):
