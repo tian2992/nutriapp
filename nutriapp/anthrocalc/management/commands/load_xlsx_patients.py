@@ -17,7 +17,15 @@ from django.db import transaction
 from django.utils import timezone
 
 from anthrocalc import bulk_import
-from anthrocalc.models import Community, Family, Metric, MultipleVisit, Patient, Visit
+from anthrocalc.models import (
+    METRIC_CLINICAL_FLAGS,
+    Community,
+    Family,
+    Metric,
+    MultipleVisit,
+    Patient,
+    Visit,
+)
 
 # Visits are stored at local midday. Stored as midnight they would cross into
 # the previous day once Django converted them to UTC, and the z-score code
@@ -155,10 +163,15 @@ class Command(BaseCommand):
                 visit.notes = occasion.notes
             visit.save()
 
-        metric, _ = Metric.objects.update_or_create(
-            visit=visit,
-            defaults={"weight": occasion.weight, "height": occasion.height},
-        )
+        # The workbook records no clinical signs. A metric created here stores
+        # them as "no" rather than the model's NULL ("unknown"). An existing
+        # metric keeps whatever was entered on it.
+        metric = Metric.objects.filter(visit=visit).first()
+        if metric is None:
+            metric = Metric(visit=visit, **{flag: False for flag in METRIC_CLINICAL_FLAGS})
+        metric.weight = occasion.weight
+        metric.height = occasion.height
+        metric.save()
         self.__counts["metrics_written"] += 1
         if metric.wfhz is None:
             self.__counts["zscores_missing"] += 1
