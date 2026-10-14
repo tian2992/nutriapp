@@ -21,10 +21,12 @@
 #       tables for apps WITHOUT migrations, so it cannot add a column such as
 #       visit.entered_by to a table that already exists; the comparison finds
 #       those, and --repair adds them (create_model / add_field, as a
-#       migration would). It also makes sure the Postgres `unaccent`
-#       extension exists (patient search needs it; the migration that creates it
-#       is not generated on a server). Exit 4 if drift remains. See
-#       scripts/sync_schema.sh.
+#       migration would). It also finds columns that are NOT NULL in the
+#       database while the model allows NULL (e.g. Metric.diarrhea after the
+#       tristate clinical-flag change) and --repair drops NOT NULL on them.
+#       It makes sure the Postgres `unaccent` extension exists (patient search
+#       needs it; the migration that creates it is not generated on a server).
+#       Exit 4 if drift remains. See scripts/sync_schema.sh.
 #
 # Modes (--mode, or NUTRI_MODE; default auto)
 #   local      python manage.py in this checkout, using its .venv if present.
@@ -298,8 +300,8 @@ cmd_import_fixtures() {
   run_manage loaddata "$runtime_path"
 }
 
-# Compares the live schema with the models, table by table and column by
-# column. Passed to `manage.py shell -c`, so it needs no image rebuild.
+# Compares the live schema with the models: tables, columns, and nullability.
+# Passed to `manage.py shell -c`, so it needs no image rebuild.
 read -r -d '' SYNC_SCHEMA_PY <<'PY' || true
 import sys
 from django.apps import apps
@@ -307,7 +309,7 @@ from django.db import connection
 
 
 def find_drift():
-    missing_tables, missing_columns = [], []
+    missing_tables, missing_columns, not_nullable = [], [], []
     with connection.cursor() as cursor:
         tables = set(connection.introspection.table_names(cursor))
         # include_auto_created: the hidden tables behind ManyToManyFields.
@@ -318,29 +320,45 @@ def find_drift():
             if meta.db_table not in tables:
                 missing_tables.append(model)
                 continue
-            have = {c.name for c in connection.introspection.get_table_description(cursor, meta.db_table)}
+            desc = {
+                c.name: c
+                for c in connection.introspection.get_table_description(
+                    cursor, meta.db_table
+                )
+            }
             for field in meta.local_concrete_fields:
-                if field.column not in have:
+                if field.column not in desc:
                     missing_columns.append((model, field))
-    return missing_tables, missing_columns
+                    continue
+                # Model allows NULL but the live column is still NOT NULL
+                # (typical when migrations were never applied and the table
+                # was created from an older BooleanField(default=False)).
+                if field.null and desc[field.column].null_ok is False:
+                    not_nullable.append((model, field))
+    return missing_tables, missing_columns, not_nullable
 
 
-def show(tables, columns):
+def show(tables, columns, not_nullable):
     for m in tables:
         print(f"  missing table   {m._meta.db_table}  ({m._meta.label})")
     for m, f in columns:
         print(f"  missing column  {m._meta.db_table}.{f.column}  ({m._meta.label}.{f.name})")
+    for m, f in not_nullable:
+        print(
+            f"  not nullable    {m._meta.db_table}.{f.column}  "
+            f"({m._meta.label}.{f.name}; model allows NULL)"
+        )
 
 
-tables, columns = find_drift()
-if not tables and not columns:
-    print("Schema matches the models: every table and column exists.")
+tables, columns, not_nullable = find_drift()
+if not tables and not columns and not not_nullable:
+    print("Schema matches the models: tables, columns, and nullability agree.")
     sys.exit(0)
 
-print("Schema drift (models expect these, the database lacks them):")
-show(tables, columns)
+print("Schema drift (models and database disagree):")
+show(tables, columns, not_nullable)
 if not REPAIR:
-    print("Re-run with --repair to add them.")
+    print("Re-run with --repair to fix them.")
     sys.exit(4)
 
 # Same operations a migration would run, without relying on django_migrations
@@ -368,11 +386,25 @@ for m, f in columns:
         print(f"  added column {m._meta.db_table}.{f.column}")
     except Exception as exc:
         print(f"  could not add {m._meta.db_table}.{f.column}: {exc}")
+for m, f in not_nullable:
+    try:
+        # Tell the schema editor the column is currently NOT NULL so it emits
+        # DROP NOT NULL / equivalent. clone() alone lacks .concrete; set the
+        # name attrs so alter_field accepts it.
+        old = f.clone()
+        old.null = False
+        old.model = m
+        old.set_attributes_from_name(f.name)
+        with connection.schema_editor() as editor:
+            editor.alter_field(m, old, f)
+        print(f"  dropped NOT NULL on {m._meta.db_table}.{f.column}")
+    except Exception as exc:
+        print(f"  could not alter nullability of {m._meta.db_table}.{f.column}: {exc}")
 
-tables, columns = find_drift()
-if tables or columns:
+tables, columns, not_nullable = find_drift()
+if tables or columns or not_nullable:
     print("Still out of sync:")
-    show(tables, columns)
+    show(tables, columns, not_nullable)
     sys.exit(4)
 print("Schema now matches the models.")
 PY
