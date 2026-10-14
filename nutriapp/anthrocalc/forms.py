@@ -142,6 +142,7 @@ class PatientForm(forms.ModelForm):
         ]
         widgets = {
             "enrolled_on": forms.DateInput(attrs={"type": "date"}),
+            "dob": forms.DateInput(attrs={"type": "date"}), 
         }
 
     field_order = [
