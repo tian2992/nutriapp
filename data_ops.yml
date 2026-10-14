@@ -1,0 +1,219 @@
+---
+# Data operations on a host already deployed with server_deploy.yml: bulk-load
+# a field workbook, export a fixture backup, or import a fixture. Everything
+# runs through scripts/nutri_data.sh in compose mode, i.e. in throwaway
+# `docker compose run --rm web ...` containers next to the live stack.
+#
+#   # validate a workbook against production without keeping anything
+#   ansible-playbook -i hosts data_ops.yml -e nutri_action=load_xlsx \
+#     -e nutri_xlsx_src=scripts/tabulacion.xlsx -e nutri_dry_run_only=true
+#
+#   # load it (backs the database up to a fixture first)
+#   ansible-playbook -i hosts data_ops.yml -e nutri_action=load_xlsx \
+#     -e nutri_xlsx_src=scripts/tabulacion.xlsx
+#
+#   # pull a fixture backup to ./data/fetched/<host>/...
+#   ansible-playbook -i hosts data_ops.yml -e nutri_action=export_fixtures
+#
+#   # restore one into an empty database (add nutri_fixture_force=true to load
+#   # into one that already has patients)
+#   ansible-playbook -i hosts data_ops.yml -e nutri_action=import_fixtures \
+#     -e nutri_fixture_src=data/fetched/myhost/.../nutriapp_20261014T094820Z.json
+#
+# Workbooks and fixtures hold children's names (and password hashes): they are
+# copied with mode 0600 into <project_dir>/data, and fetched fixtures land
+# in the gitignored ./data/ of the control node.
+- name: Nutriapp data operations (bulk xlsx load, fixtures)
+  hosts: all
+  become: true
+
+  vars:
+    project_dir: /opt/nutriapp
+
+    # One of: load_xlsx, export_fixtures, import_fixtures (required)
+    nutri_action: ""
+
+    # load_xlsx -- path on the control node
+    nutri_xlsx_src: ""
+    nutri_xlsx_profile: nimacabaj      # built-in name, or a profile JSON path on the control node
+    nutri_xlsx_sheet: ""               # empty: the profile's sheet
+    nutri_batch_id: ""                 # empty: bulk_<today>
+    nutri_dry_run_only: false          # report what would load, change nothing
+
+    # import_fixtures -- path on the control node
+    nutri_fixture_src: ""
+    nutri_fixture_force: false         # load into a database that already has patients
+
+    # Export a fixture on the server before anything that writes to the database.
+    nutri_backup_first: true
+
+    # Where fetched fixtures land on the control node.
+    nutri_fetch_dest: "{{ playbook_dir }}/data/fetched/"
+
+    nutri_data_dir: "{{ project_dir }}/data"
+    nutri_script: "{{ project_dir }}/scripts/nutri_data.sh"
+    nutri_stamp: "{{ ansible_facts['date_time']['iso8601_basic_short'] }}"
+    nutri_cmd: "{{ [nutri_script, '--mode', 'compose', '--data-dir', nutri_data_dir] }}"
+
+  pre_tasks:
+    - name: Check the requested action and its inputs
+      ansible.builtin.assert:
+        that:
+          - nutri_action in ['load_xlsx', 'export_fixtures', 'import_fixtures']
+          - nutri_action != 'load_xlsx' or nutri_xlsx_src | length > 0
+          - nutri_action != 'import_fixtures' or nutri_fixture_src | length > 0
+        fail_msg: >-
+          Set -e nutri_action=load_xlsx|export_fixtures|import_fixtures, with
+          nutri_xlsx_src (load_xlsx) or nutri_fixture_src (import_fixtures).
+      tags: [always]
+
+    - name: Check the workbook / fixture exist on the control node
+      ansible.builtin.stat:
+        path: "{{ nutri_xlsx_src if nutri_action == 'load_xlsx' else nutri_fixture_src }}"
+      delegate_to: localhost
+      become: false
+      register: nutri_source
+      when: nutri_action != 'export_fixtures'
+      failed_when: not nutri_source.stat.exists
+      tags: [always]
+
+    - name: Check the app is deployed on the host
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ nutri_script }}"
+        - "{{ project_dir }}/.env"
+      register: nutri_deployed
+      tags: [always]
+
+    - name: Fail when the host has not been deployed yet
+      ansible.builtin.fail:
+        msg: "{{ item.item }} is missing on the host; run server_deploy.yml first (and make sure this branch of the repo is what was deployed)."
+      when: not item.stat.exists
+      loop: "{{ nutri_deployed.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      tags: [always]
+
+  tasks:
+    - name: Create the data directories (0700, they hold personal data)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0700"
+      loop:
+        - "{{ nutri_data_dir }}"
+        - "{{ nutri_data_dir }}/input"
+        - "{{ nutri_data_dir }}/fixtures"
+        - "{{ nutri_data_dir }}/backups"
+
+    # ---- safety net ---------------------------------------------------------
+    - name: Back the database up to a fixture before writing to it
+      ansible.builtin.command:
+        argv: >-
+          {{ nutri_cmd + ['export-fixtures', '--output',
+             nutri_data_dir ~ '/backups/before_' ~ nutri_action ~ '_' ~ nutri_stamp ~ '.json'] }}
+      when:
+        - nutri_backup_first | bool
+        - nutri_action == 'import_fixtures' or (nutri_action == 'load_xlsx' and not nutri_dry_run_only | bool)
+      changed_when: true
+      tags: [backup]
+
+    # ---- load_xlsx ----------------------------------------------------------
+    - name: Bulk-load a workbook
+      when: nutri_action == 'load_xlsx'
+      block:
+        - name: Copy the workbook to the host
+          ansible.builtin.copy:
+            src: "{{ nutri_xlsx_src }}"
+            dest: "{{ nutri_data_dir }}/input/{{ nutri_xlsx_src | basename }}"
+            mode: "0600"
+
+        - name: Copy a custom profile to the host
+          ansible.builtin.copy:
+            src: "{{ nutri_xlsx_profile }}"
+            dest: "{{ nutri_data_dir }}/input/{{ nutri_xlsx_profile | basename }}"
+            mode: "0600"
+          when: nutri_xlsx_profile.endswith('.json')
+
+        - name: Work out the loader arguments
+          ansible.builtin.set_fact:
+            nutri_load_args: >-
+              {{ [nutri_data_dir ~ '/input/' ~ nutri_xlsx_src | basename,
+                  '--profile',
+                  (nutri_data_dir ~ '/input/' ~ nutri_xlsx_profile | basename)
+                    if nutri_xlsx_profile.endswith('.json') else nutri_xlsx_profile,
+                  '--quiet-warnings']
+                 + (['--sheet', nutri_xlsx_sheet] if nutri_xlsx_sheet | length else [])
+                 + (['--batch-id', nutri_batch_id] if nutri_batch_id | length else []) }}
+
+        # Always dry-run first: it runs the real inserts and rolls them back,
+        # so a failure here costs nothing.
+        - name: Dry-run the load (rolled back)
+          ansible.builtin.command:
+            argv: "{{ nutri_cmd + ['load-xlsx'] + nutri_load_args + ['--dry-run'] }}"
+          register: nutri_dry_run
+          changed_when: false
+
+        - name: Show the dry-run report
+          ansible.builtin.debug:
+            msg: "{{ nutri_dry_run.stdout_lines[-8:] }}"
+
+        - name: Load the workbook for real
+          ansible.builtin.command:
+            argv: "{{ nutri_cmd + ['load-xlsx'] + nutri_load_args }}"
+          register: nutri_load
+          changed_when: "'Created 0 patients' not in nutri_load.stdout or 'Created 0 visits' not in nutri_load.stdout"
+          when: not nutri_dry_run_only | bool
+
+        - name: Show the load report
+          ansible.builtin.debug:
+            msg: "{{ nutri_load.stdout_lines[-8:] }}"
+          when: not nutri_dry_run_only | bool
+      tags: [load_xlsx]
+
+    # ---- export_fixtures ----------------------------------------------------
+    - name: Export a fixture and fetch it
+      when: nutri_action == 'export_fixtures'
+      block:
+        - name: Export the fixture on the host
+          ansible.builtin.command:
+            argv: >-
+              {{ nutri_cmd + ['export-fixtures', '--output',
+                 nutri_data_dir ~ '/fixtures/nutriapp_' ~ nutri_stamp ~ '.json'] }}
+          register: nutri_export
+          changed_when: true
+
+        - name: Fetch the fixture to the control node
+          ansible.builtin.fetch:
+            src: "{{ nutri_export.stdout_lines[-1] }}"
+            dest: "{{ nutri_fetch_dest }}"
+            flat: false
+
+        - name: Say where it went
+          ansible.builtin.debug:
+            msg: "On the host: {{ nutri_export.stdout_lines[-1] }}; copy under {{ nutri_fetch_dest }}"
+      tags: [export_fixtures]
+
+    # ---- import_fixtures ----------------------------------------------------
+    - name: Import a fixture
+      when: nutri_action == 'import_fixtures'
+      block:
+        - name: Copy the fixture to the host
+          ansible.builtin.copy:
+            src: "{{ nutri_fixture_src }}"
+            dest: "{{ nutri_data_dir }}/input/{{ nutri_fixture_src | basename }}"
+            mode: "0600"
+
+        - name: Load the fixture
+          ansible.builtin.command:
+            argv: >-
+              {{ nutri_cmd + ['import-fixtures', nutri_data_dir ~ '/input/' ~ nutri_fixture_src | basename]
+                 + (['--force'] if nutri_fixture_force | bool else []) }}
+          register: nutri_import
+          changed_when: true
+
+        - name: Show the import report
+          ansible.builtin.debug:
+            msg: "{{ nutri_import.stdout_lines[-3:] }}"
+      tags: [import_fixtures]
