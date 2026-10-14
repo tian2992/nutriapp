@@ -6,6 +6,12 @@ import math
 
 logger = logging.getLogger(__name__)
 
+# WHO Child Growth Standards via pygrowup (full published tables):
+# WFL 45–110 cm (recumbent), WFH 65–120 cm (standing). Combined WHZ: 45–120 cm.
+WFL_HEIGHT_RANGE = (45.0, 110.0)
+WFH_HEIGHT_RANGE = (65.0, 120.0)
+WHZ_HEIGHT_RANGE = (WFL_HEIGHT_RANGE[0], WFH_HEIGHT_RANGE[1])
+
 
 def calculate_age_at_date(patient, reference_date):
     """Return age at a reference date in days and months."""
@@ -22,6 +28,80 @@ def calculate_age_at_date(patient, reference_date):
     age_months = dob_days / 30.4375 if dob_days is not None else None
     plus_days = dob_days - (math.floor(age_months) * 30.4375)
     return {"days": plus_days, "months": math.floor(age_months), "months_float": age_months, "dob_days": dob_days}
+
+
+def _height_in_range(height, bounds):
+    return height is not None and bounds[0] <= float(height) <= bounds[1]
+
+
+def _whz_table_order(height, recumbent):
+    """
+    Return pygrowup WHZ methods to try, using the full WHO WFL∪WFH coverage.
+
+    Prefer length (wfl) when recumbent or only WFL applies; prefer height (wfh)
+    when standing or only WFH applies. In the 65–110 cm overlap, try the other
+    table only if the preferred one fails.
+    """
+    can_wfl = _height_in_range(height, WFL_HEIGHT_RANGE)
+    can_wfh = _height_in_range(height, WFH_HEIGHT_RANGE)
+    prefer_wfl = recumbent or (height is not None and float(height) < WFH_HEIGHT_RANGE[0])
+
+    ordered = []
+    if prefer_wfl:
+        if can_wfl:
+            ordered.append("wfl")
+        if can_wfh:
+            ordered.append("wfh")
+    else:
+        if can_wfh:
+            ordered.append("wfh")
+        if can_wfl:
+            ordered.append("wfl")
+    return ordered
+
+
+def _calculate_whz(obs, weight, height, recumbent):
+    """Compute WHZ from WHO WFL/WFH tables; None when outside published ranges."""
+    if weight is None or height is None:
+        return None
+
+    tables = _whz_table_order(height, recumbent)
+    if not tables:
+        logger.info(
+            "WHZ skipped: height %s cm outside WHO tables (%.0f–%.0f cm)",
+            height,
+            WHZ_HEIGHT_RANGE[0],
+            WHZ_HEIGHT_RANGE[1],
+        )
+        return None
+
+    last_error = None
+    for table in tables:
+        method = getattr(obs, table)
+        try:
+            return float(method(weight, height))
+        except (
+            pygrowup.exceptions.AgeOutOfRangeError,
+            pygrowup.exceptions.MeasurementOutOfRangeError,
+            pygrowup.exceptions.ZScoreError,
+        ) as e:
+            last_error = e
+        except Exception as e:
+            last_error = e
+            break
+
+    if isinstance(
+        last_error,
+        (
+            pygrowup.exceptions.AgeOutOfRangeError,
+            pygrowup.exceptions.MeasurementOutOfRangeError,
+            pygrowup.exceptions.ZScoreError,
+        ),
+    ):
+        logger.info("WHZ not available: %s", last_error)
+    elif last_error is not None:
+        logger.warning("Error calculating WHZ: %s", last_error)
+    return None
 
 
 def calculate_zscore_for_metric(metric):
@@ -57,30 +137,17 @@ def calculate_zscore_for_metric(metric):
             logger.warning("Error calculating WAZ: %s", e)
             metric.wfaz = None
 
+        # recumbent is the opposite of standing_or_upright (None => standing)
+        recumbent = not metric.standing_or_upright if metric.standing_or_upright is not None else False
+
         # HAZ: Height-for-age
         try:
-            # recumbent is the opposite of standing_or_upright
-            recumbent = not metric.standing_or_upright if metric.standing_or_upright is not None else False
             metric.hfaz = float(obs.lhfa(metric.height, recumbent=recumbent))
         except Exception as e:
             logger.warning("Error calculating HAZ: %s", e)
             metric.hfaz = None
 
-        # WHZ: Weight-for-height / Weight-for-length
-        try:
-            if recumbent or (metric.height is not None and metric.height < 65):
-                metric.wfhz = float(obs.wfl(metric.weight, metric.height))
-            else:
-                metric.wfhz = float(obs.wfh(metric.weight, metric.height))
-        except Exception:
-            try:
-                if recumbent or (metric.height is not None and metric.height < 65):
-                    metric.wfhz = float(obs.wfh(metric.weight, metric.height))
-                else:
-                    metric.wfhz = float(obs.wfl(metric.weight, metric.height))
-            except Exception as e:
-                logger.warning("Error calculating WHZ: %s", e)
-                metric.wfhz = None
+        metric.wfhz = _calculate_whz(obs, metric.weight, metric.height, recumbent)
 
     except Exception:
         logger.exception("Failed to calculate Z-scores")

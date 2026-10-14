@@ -467,8 +467,8 @@ class LoggingSettingsTests(SimpleTestCase):
 
     def test_person_utils_logging_whz_calculation_warning(self):
         """
-        Verify that a failure in WHZ calculation logs a warning with error details
-        and sets metric.wfhz to None.
+        Unexpected WHZ failures log a warning; height only in the WFH band so
+        there is no WFL fallback that could mask the error.
         """
         import datetime
         import pygrowup
@@ -486,7 +486,7 @@ class LoggingSettingsTests(SimpleTestCase):
         mock_metric = MagicMock()
         mock_metric.visit = mock_visit
         mock_metric.weight = 10.0
-        mock_metric.height = 80.0
+        mock_metric.height = 115.0
         mock_metric.standing_or_upright = True
 
         with patch.object(pygrowup.Observation, "wfh", side_effect=ValueError("Measurement out of bounds")):
@@ -497,6 +497,33 @@ class LoggingSettingsTests(SimpleTestCase):
         self.assertIsNone(mock_metric.wfhz)
         self.assertIsInstance(mock_metric.wfaz, float)
         self.assertIsInstance(mock_metric.hfaz, float)
+
+    def test_person_utils_whz_outside_who_tables_logs_info(self):
+        """Heights outside 45–120 cm skip WHZ at INFO, not WARNING."""
+        import datetime
+        from unittest.mock import MagicMock
+        from anthrocalc.person_utils import calculate_zscore_for_metric
+
+        mock_patient = MagicMock()
+        mock_patient.dob = datetime.date(2015, 1, 1)
+        mock_patient.gender = "female"
+
+        mock_visit = MagicMock()
+        mock_visit.patient = mock_patient
+        mock_visit.date.date.return_value = datetime.date(2022, 1, 1)
+
+        mock_metric = MagicMock()
+        mock_metric.visit = mock_visit
+        mock_metric.weight = 40.0
+        mock_metric.height = 130.0
+        mock_metric.standing_or_upright = True
+
+        with self.assertLogs("anthrocalc.person_utils", level="INFO") as cm:
+            calculate_zscore_for_metric(mock_metric)
+            self.assertTrue(any("WHZ skipped" in out for out in cm.output))
+            self.assertFalse(any("Error calculating WHZ" in out for out in cm.output))
+
+        self.assertIsNone(mock_metric.wfhz)
 
     def test_person_utils_logging_outer_exception_details(self):
         """

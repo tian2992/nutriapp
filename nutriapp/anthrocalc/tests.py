@@ -1182,6 +1182,64 @@ class WhoReferenceTests(TestCase):
             self.assertAlmostEqual(calc_z, expected_z, delta=0.05)
 
 
+class WhzCalculationTests(TestCase):
+    def setUp(self):
+        self.community = Community.objects.create(name="WHZBand")
+        self.family = Family.objects.create(responsible_name="Familia WHZ", community=self.community)
+        self.patient = Patient.objects.create(
+            name="Bebe WHZ",
+            gender="M",
+            dob=datetime.date(2022, 10, 17),
+            family=self.family,
+        )
+
+    def test_short_recumbent_length_uses_wfl(self):
+        visit = Visit.objects.create(
+            patient=self.patient,
+            date=timezone.make_aware(datetime.datetime(2022, 11, 16)),
+        )
+        metric = Metric.objects.create(
+            visit=visit, weight=3.82, height=53.2, standing_or_upright=False
+        )
+        self.assertIsNotNone(metric.wfhz)
+        self.assertAlmostEqual(metric.wfhz, -0.7, places=1)
+
+    def test_tall_standing_height_uses_wfh(self):
+        older = Patient.objects.create(
+            name="Mayor WHZ",
+            gender="F",
+            dob=datetime.date(2018, 1, 1),
+            family=self.family,
+        )
+        visit = Visit.objects.create(
+            patient=older,
+            date=timezone.make_aware(datetime.datetime(2022, 1, 1)),
+        )
+        metric = Metric.objects.create(
+            visit=visit, weight=18.0, height=115.0, standing_or_upright=True
+        )
+        self.assertIsNotNone(metric.wfhz)
+
+    def test_height_outside_who_tables_leaves_wfhz_none(self):
+        visit = Visit.objects.create(
+            patient=self.patient,
+            date=timezone.make_aware(datetime.datetime(2023, 1, 1)),
+        )
+        metric = Metric.objects.create(
+            visit=visit, weight=25.0, height=130.0, standing_or_upright=True
+        )
+        self.assertIsNone(metric.wfhz)
+
+    def test_whz_table_order_covers_full_who_union(self):
+        from .person_utils import _whz_table_order
+
+        self.assertEqual(_whz_table_order(53.0, recumbent=True), ["wfl"])
+        self.assertEqual(_whz_table_order(80.0, recumbent=True), ["wfl", "wfh"])
+        self.assertEqual(_whz_table_order(80.0, recumbent=False), ["wfh", "wfl"])
+        self.assertEqual(_whz_table_order(115.0, recumbent=False), ["wfh"])
+        self.assertEqual(_whz_table_order(130.0, recumbent=False), [])
+
+
 class GrowthChartTests(BaseAuthenticatedTestCase):
     def setUp(self):
         super().setUp()
