@@ -3,6 +3,8 @@
 {% load utils %}
 {% load i18n %}
 
+{% block title %}{{ patient.name }} · {% translate "Individual" %} | {% translate "Nutriaccion" %}{% endblock %}
+
 {% block content %}
 <h1>{% translate "Información de:" %} {{ patient.name }}</h1>
 <div class="patient-info card-body">
