@@ -21,7 +21,10 @@
 #       tables for apps WITHOUT migrations, so it cannot add a column such as
 #       visit.entered_by to a table that already exists; the comparison finds
 #       those, and --repair adds them (create_model / add_field, as a
-#       migration would). Exit 4 if drift remains. See scripts/sync_schema.sh.
+#       migration would). It also makes sure the Postgres `unaccent`
+#       extension exists (patient search needs it; the migration that creates it
+#       is not generated on a server). Exit 4 if drift remains. See
+#       scripts/sync_schema.sh.
 #
 # Modes (--mode, or NUTRI_MODE; default auto)
 #   local      python manage.py in this checkout, using its .venv if present.
@@ -374,6 +377,17 @@ if tables or columns:
 print("Schema now matches the models.")
 PY
 
+read -r -d '' ENSURE_UNACCENT_PY <<'PY' || true
+from django.db import connection
+
+if connection.vendor == "postgresql":
+    with connection.cursor() as cursor:
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS unaccent")
+    print("unaccent extension present.")
+else:
+    print(f"unaccent not needed on {connection.vendor}.")
+PY
+
 cmd_sync_schema() {
   local repair=0 makemig=1
   while (($#)); do
@@ -391,6 +405,12 @@ cmd_sync_schema() {
   fi
   log "migrate --run-syncdb"
   run_manage migrate --noinput --run-syncdb
+
+  # Patient search needs this extension. It lives in the hand-written local
+  # migration 0006, which a server that generates its own migrations never has.
+  log "ensuring the Postgres unaccent extension"
+  run_manage shell -c "$ENSURE_UNACCENT_PY" \
+    || die "sync-schema: could not create the unaccent extension (needs a database user allowed to CREATE EXTENSION)."
 
   local py_repair=False rc=0
   [ "$repair" = 1 ] && py_repair=True
