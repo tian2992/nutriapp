@@ -1,7 +1,7 @@
 # To-do del proyecto
 
 ## Prioridad alta
-- [ ] Al crear un nuevo niño, redirigir automáticamente a la página del niño.
+- [x] Al crear un nuevo niño, redirigir automáticamente a la página del niño.
 - [ ] En la vista de detalle de visita, permitir agregar la visita a una jornada existente.
 - [ ] En la vista de jornada, agregar un enlace tipo pop-up para incluir a un niño en la lista de la jornada.
 - [ ] Añadir botón para guardar la medición por niño en la vista de jornada.

@@ -558,8 +558,8 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
                 "new_family_name": "Familia Nueva",
             },
         )
-        self.assertRedirects(response, reverse("patients:list"))
         patient = Patient.objects.get(name="Carla Nueva")
+        self.assertRedirects(response, reverse("patients:detail", args=[patient.id]))
         self.assertEqual(patient.family.responsible_name, "Familia Nueva")
         self.assertEqual(Family.objects.filter(responsible_name="Familia Nueva").count(), 1)
 
@@ -574,7 +574,8 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
                 "new_family_name": "Otra Familia Distinta",
             },
         )
-        self.assertRedirects(response, reverse("patients:list"))
+        created = Patient.objects.filter(name="Diego Repetido").exclude(pk=self.existing.pk).get()
+        self.assertRedirects(response, reverse("patients:detail", args=[created.id]))
         self.assertEqual(Patient.objects.filter(name="Diego Repetido").count(), 2)
 
     def test_post_existing_family_name_requires_confirm_flag(self):
@@ -596,9 +597,9 @@ class PatientCreationDuplicateWarningTests(BaseAuthenticatedTestCase):
 
         payload["confirm_new_family"] = "1"
         response = self.client.post(reverse("patients:new"), payload)
-        self.assertRedirects(response, reverse("patients:list"))
-        self.assertEqual(Family.objects.filter(responsible_name="Familia Existente").count(), 2)
         created = Patient.objects.get(name="Niño Distinto")
+        self.assertRedirects(response, reverse("patients:detail", args=[created.id]))
+        self.assertEqual(Family.objects.filter(responsible_name="Familia Existente").count(), 2)
         self.assertNotEqual(created.family_id, self.family.id)
         self.assertEqual(created.family.responsible_name, "Familia Existente")
 

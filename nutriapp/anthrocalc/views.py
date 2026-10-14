@@ -166,7 +166,6 @@ class FamilyDetail(DetailView):
 class PatientCreation(CreateView):
     model = Patient
     form_class = PatientForm
-    success_url = reverse_lazy("patients:list")
     _FORM_QUERY_FIELDS = (
         "code",
         "name",
@@ -247,6 +246,9 @@ class PatientCreation(CreateView):
     def _new_family_confirmed(self):
         flag = (self.request.POST.get("confirm_new_family") or "").strip().lower()
         return flag in {"1", "on", "true", "yes"}
+
+    def get_success_url(self):
+        return self.object.get_absolute_url()
 
 
 @method_decorator(login_required, name="dispatch")
