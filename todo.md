@@ -12,7 +12,7 @@
 
 ## Prioridad media
 - [ ] Agregar un campo opcional para la fecha de ingreso al programa de cada paciente.
-- [ ] Permitir ordenar la vista de comunidad por nombre o por fecha de nacimiento.
+- [x] Permitir ordenar la vista de comunidad por nombre o por fecha de nacimiento.
 - [ ] Corregir el script de decodificación para que también procese el nombre de la familia y el de la madre.
 
 ## Notas

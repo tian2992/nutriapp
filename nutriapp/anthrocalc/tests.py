@@ -354,6 +354,31 @@ class CommunityViewsTests(BaseAuthenticatedTestCase):
         self.assertContains(response, "PAC001")
         self.assertContainsFloats(response, "12.5", "88.0")
 
+    def test_community_roster_sort_by_name_or_dob(self):
+        Patient.objects.create(
+            code="PAC002",
+            name="Berta Gómez",
+            gender="F",
+            dob=datetime.date(2021, 1, 1),
+            family=self.family,
+        )
+        url = reverse("communities:detail", args=[self.community.id])
+
+        by_name = self.client.get(url)
+        self.assertEqual(by_name.context["roster_sort"], "name")
+        self.assertEqual(
+            [row["patient"].name for row in by_name.context["roster"]],
+            ["Anita Gómez", "Berta Gómez"],
+        )
+
+        by_dob = self.client.get(url + "?sort=dob")
+        self.assertEqual(by_dob.context["roster_sort"], "dob")
+        self.assertEqual(
+            [row["patient"].name for row in by_dob.context["roster"]],
+            ["Berta Gómez", "Anita Gómez"],
+        )
+        self.assertContains(by_dob, 'href="?export=csv&sort=dob"')
+
     def test_community_detail_csv_export(self):
         visit = Visit.objects.create(patient=self.patient, date=timezone.now())
         Metric.objects.create(visit=visit, weight=12.5, height=88.0, standing_or_upright=True)

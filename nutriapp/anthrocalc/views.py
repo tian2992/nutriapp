@@ -558,13 +558,23 @@ class CommunityDetail(DetailView):
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
+    _ROSTER_SORTS = {
+        "name": ("name",),
+        "dob": ("dob", "name"),
+    }
+
+    def _roster_ordering(self):
+        sort = (self.request.GET.get("sort") or "name").strip().lower()
+        return sort if sort in self._ROSTER_SORTS else "name"
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         community = self.object
+        sort = self._roster_ordering()
         patients = (
             Patient.objects.filter(family__community=community)
             .select_related("family")
-            .order_by("name")
+            .order_by(*self._ROSTER_SORTS[sort])
         )
 
         roster = []
@@ -609,6 +619,7 @@ class CommunityDetail(DetailView):
 
         context["roster"] = roster
         context["total_children"] = patients.count()
+        context["roster_sort"] = sort
         last_mv = MultipleVisit.objects.filter(community=community).order_by("-date").first()
         context["last_measurement_date"] = last_mv.date if last_mv else None
         context["multiple_visits"] = MultipleVisit.objects.filter(community=community).order_by("-date")[:10]
@@ -640,10 +651,11 @@ class CommunityDetail(DetailView):
         ])
 
         today = now().date()
+        sort = self._roster_ordering()
         patients = (
             Patient.objects.filter(family__community=self.object)
             .select_related("family")
-            .order_by("name")
+            .order_by(*self._ROSTER_SORTS[sort])
         )
         for patient in patients:
             visits = (
