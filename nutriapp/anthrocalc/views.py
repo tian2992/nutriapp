@@ -27,6 +27,7 @@ from .forms import (
     MetricForm,
     PatientForm,
     VisitForm,
+    jornadas_for_patient,
 )
 from .models import *
 from .patient_search import filter_patients_by_text
@@ -307,7 +308,31 @@ class VisitDetail(DetailView):
         context["env_metrics"] = EnvironmentMetric.objects.filter(visit=self.object.id)
         family = self.object.patient.family
         context["household_status"] = family.status_as_of(self.object.date) if family else None
+        context["available_jornadas"] = jornadas_for_patient(self.object.patient)
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.POST.get("action") != "assign_jornada":
+            return self.get(request, *args, **kwargs)
+
+        raw = (request.POST.get("multiple_visit") or "").strip()
+        if not raw:
+            self.object.multiple_visit = None
+            self.object.save(update_fields=["multiple_visit"])
+            messages.success(request, "Visita desasignada de jornada.")
+            return redirect(self.object.get_absolute_url())
+
+        jornada = get_object_or_404(MultipleVisit, pk=raw)
+        community = self.object.patient.community
+        if community is None or jornada.community_id != community.id:
+            messages.error(request, "La jornada debe pertenecer a la comunidad del paciente.")
+            return redirect(self.object.get_absolute_url())
+
+        self.object.multiple_visit = jornada
+        self.object.save(update_fields=["multiple_visit"])
+        messages.success(request, "Visita asignada a la jornada.")
+        return redirect(self.object.get_absolute_url())
 
 
 @method_decorator(login_required, name="dispatch")

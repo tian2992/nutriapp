@@ -15,6 +15,36 @@
 <div>
     <h2>{% translate "Información de visita" %}</h2>
     <p>{% translate "Fecha de visita:" %} <i>{{ visit.date }}</i></p>
+    <p>
+        <strong>{% translate "Jornada:" %}</strong>
+        {% if visit.multiple_visit %}
+            <a href="{% url 'communities:jornada' visit.multiple_visit.community_id visit.multiple_visit.id %}">
+                {{ visit.multiple_visit }}
+            </a>
+        {% else %}
+            <span class="text-muted">{% translate "Sin jornada" %}</span>
+        {% endif %}
+    </p>
+    {% if available_jornadas %}
+    <form method="post" class="row g-2 align-items-end mb-3" style="max-width: 36rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="assign_jornada">
+        <div class="col-auto flex-grow-1">
+            <label class="form-label mb-1" for="id_assign_jornada">{% translate "Asignar a jornada" %}</label>
+            <select name="multiple_visit" id="id_assign_jornada" class="form-select">
+                <option value="">{% translate "Sin jornada" %}</option>
+                {% for jornada in available_jornadas %}
+                <option value="{{ jornada.id }}" {% if visit.multiple_visit_id == jornada.id %}selected{% endif %}>
+                    {{ jornada }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">{% translate "Guardar" %}</button>
+        </div>
+    </form>
+    {% endif %}
     <p>{% translate "En esta visita se realizó:" %}</p>
     {% for metric in metrics %}
       <div>

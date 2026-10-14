@@ -292,6 +292,26 @@ class VisitJornadaFilterTests(BaseAuthenticatedTestCase):
         self.assertIn(self.mv_a, jornada_qs)
         self.assertNotIn(self.mv_b, jornada_qs)
 
+    def test_visit_detail_assigns_jornada_from_same_community(self):
+        visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        response = self.client.post(
+            reverse("visits:detail", args=[visit.id]),
+            {"action": "assign_jornada", "multiple_visit": self.mv_a.id},
+        )
+        self.assertRedirects(response, reverse("visits:detail", args=[visit.id]))
+        visit.refresh_from_db()
+        self.assertEqual(visit.multiple_visit_id, self.mv_a.id)
+
+    def test_visit_detail_rejects_jornada_from_other_community(self):
+        visit = Visit.objects.create(patient=self.patient, date=timezone.now())
+        response = self.client.post(
+            reverse("visits:detail", args=[visit.id]),
+            {"action": "assign_jornada", "multiple_visit": self.mv_b.id},
+        )
+        self.assertRedirects(response, reverse("visits:detail", args=[visit.id]))
+        visit.refresh_from_db()
+        self.assertIsNone(visit.multiple_visit_id)
+
 
 class CommunityModelAndRelationshipTests(TestCase):
     def setUp(self):
