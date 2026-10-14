@@ -44,7 +44,7 @@
       <td><a href="{% url 'visits:detail' item.visit.id %}">{{ item.visit.date|date:"Y-m-d H:i" }}</a></td>
       <td>
         {% if item.age_days is not None and item.age_months is not None %}
-          {{ item.age_days|floatformat:"0" }}d / {{ item.age_months|floatformat:"0" }}m
+           {{ item.age_months|floatformat:"0" }}m + {{ item.age_days|floatformat:"0" }}d 
         {% else %}
           —
         {% endif %}
@@ -58,7 +58,7 @@
       </td>
       <td>
         {% if item.metric %}
-          {{ item.metric.height|floatformat:1 }}
+          {{ item.metric.height|floatformat:2 }}
         {% else %}
           —
         {% endif %}
@@ -90,6 +90,38 @@
 </table>
 {% else %}
 <p>{% translate "No hay visitas registradas aún." %}</p>
+{% endif %}
+
+{% if visits_metrics and measurement_count >= 1 %}
+<div class="growth-charts mt-4 mb-4">
+    <h3>{% translate "Gráficas de Crecimiento (Patrones OMS)" %}</h3>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header font-weight-bold">{% translate "Talla para la Edad (HAZ)" %}</div>
+                <div class="card-body text-center p-2">
+                    <img src="{% url 'antrobase:personal_progress' %}?person_id={{ patient.id }}&indicator=hfa" class="img-fluid rounded" alt="{% translate 'Gráfica Talla para la Edad (HAZ)' %}">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header font-weight-bold">{% translate "Peso para la Edad (WAZ)" %}</div>
+                <div class="card-body text-center p-2">
+                    <img src="{% url 'antrobase:personal_progress' %}?person_id={{ patient.id }}&indicator=wfa" class="img-fluid rounded" alt="{% translate 'Gráfica Peso para la Edad (WAZ)' %}">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header font-weight-bold">{% translate "Peso para la Talla (WHZ)" %}</div>
+                <div class="card-body text-center p-2">
+                    <img src="{% url 'antrobase:personal_progress' %}?person_id={{ patient.id }}&indicator=wfh" class="img-fluid rounded" alt="{% translate 'Gráfica Peso para la Talla (WHZ)' %}">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <a class="btn btn-warning" role="button" href='{% url "patients:edit" patient.id %}'>{% translate "Editar información." %}</a>

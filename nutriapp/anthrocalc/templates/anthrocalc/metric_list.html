@@ -23,8 +23,8 @@
         <tr>
             <td>{{ metrica.visit.patient.name }}</td>
             <td>{{ metrica.visit.date }}</td>
-            <td>{{ metrica.weight|default:"N/A" }}</td>
-            <td>{{ metrica.height|default:"N/A" }}</td>
+            <td>{{ metrica.weight|floatformat:2|default:"N/A" }}</td>
+            <td>{{ metrica.height|floatformat:2|default:"N/A" }}</td>
             <td class="text-end">
                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'metrics:detail' metrica.id %}">{% translate "Ver" %}</a>
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'metrics:edit' metrica.id %}">{% translate "Editar" %}</a>

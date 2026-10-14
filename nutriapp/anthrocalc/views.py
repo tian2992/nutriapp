@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.manager import BaseManager
 from django.forms import formset_factory
 from django.http import HttpResponse
@@ -20,12 +20,16 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from .forms import (
     CommunityForm,
+    EnvironmentMetricCreateForm,
+    EnvironmentMetricForm,
     MassMeasurementHeaderForm,
     MassMeasurementRowForm,
     MetricForm,
     PatientForm,
+    VisitForm,
 )
 from .models import *
+from .patient_search import filter_patients_by_text
 from .person_utils import (
     calculate_age_at_date,
     fetch_historical_metrics,
@@ -109,12 +113,13 @@ class PatientList(ExportableListView):
         community_id = self.request.GET.get("community")
         if community_id:
             qs = qs.filter(family__community_id=community_id)
-        return qs
+        return filter_patients_by_text(qs, self.request.GET.get("q"))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["communities"] = Community.objects.all()
         context["selected_community"] = self.request.GET.get("community", "")
+        context["q"] = self.request.GET.get("q", "")
         return context
 
 
@@ -162,12 +167,86 @@ class PatientCreation(CreateView):
     model = Patient
     form_class = PatientForm
     success_url = reverse_lazy("patients:list")
+    _FORM_QUERY_FIELDS = (
+        "code",
+        "name",
+        "gender",
+        "dob",
+        "new_community_name",
+        "family",
+        "new_family_name",
+        "mother_name",
+        "birth_weight",
+        "birth_length",
+        "maternal_education",
+    )
 
     def get_initial(self):
         initial = super().get_initial()
         if "community" in self.request.GET:
             initial["community"] = self.request.GET["community"]
+        if self.request.method == "GET":
+            for field in self._FORM_QUERY_FIELDS:
+                value = self.request.GET.get(field)
+                if value:
+                    initial[field] = value
         return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["patient_matches"] = self._matching_patients()
+        context.setdefault("family_matches", [])
+        return context
+
+    def form_valid(self, form):
+        family_matches = self._unconfirmed_family_matches(form)
+        if family_matches:
+            return self.render_to_response(
+                self.get_context_data(form=form, family_matches=family_matches)
+            )
+        return super().form_valid(form)
+
+    def _matching_patients(self):
+        """Patients whose name or code contains the GET search terms.
+
+        Lookup stays in this view. Empty terms must not become icontains of "".
+        """
+        if self.request.method != "GET":
+            return []
+        name = (self.request.GET.get("name") or "").strip()
+        code = (self.request.GET.get("code") or "").strip()
+        lookup = Q()
+        if name:
+            lookup |= Q(name__icontains=name)
+        if code:
+            lookup |= Q(code__icontains=code)
+        if not lookup:
+            return []
+        return list(
+            Patient.objects.filter(lookup)
+            .select_related("family", "family__community")
+            .order_by("name", "pk")
+        )
+
+    def _unconfirmed_family_matches(self, form):
+        """Existing families with this responsible name, unless creation was confirmed.
+
+        Does not get_or_create: a second family is inserted only after confirm_new_family.
+        """
+        if form.cleaned_data.get("family"):
+            return []
+        name = (form.cleaned_data.get("new_family_name") or "").strip()
+        if not name or self._new_family_confirmed():
+            return []
+        return list(
+            Family.objects.filter(responsible_name__iexact=name)
+            .select_related("community")
+            .order_by("pk")
+        )
+
+    def _new_family_confirmed(self):
+        flag = (self.request.POST.get("confirm_new_family") or "").strip().lower()
+        return flag in {"1", "on", "true", "yes"}
 
 
 @method_decorator(login_required, name="dispatch")
@@ -231,12 +310,8 @@ class VisitDetail(DetailView):
 @method_decorator(login_required, name="dispatch")
 class VisitCreation(CreateView):
     model = Visit
-    metric = Metric
+    form_class = VisitForm
     success_url = reverse_lazy("visits:list")  ## TODO: redirect to new metric
-    # success_url = reverse_lazy('metrics:newvm')
-    # +"?visit={{visit.id}}"
-    # ", args=metric.id)
-    fields = "__all__"
 
     def get_success_url(self):
         return reverse("visits:detail", args=(self.object.id,))
@@ -247,12 +322,17 @@ class VisitCreation(CreateView):
             initial["patient"] = self.request.GET["patient"]
         return initial
 
+    def form_valid(self, form):
+        if self.request.user.is_authenticated:
+            form.instance.entered_by = self.request.user
+        return super().form_valid(form)
+
 
 @method_decorator(login_required, name="dispatch")
 class VisitUpdate(UpdateView):
     model = Visit
+    form_class = VisitForm
     success_url = reverse_lazy("visits:list")
-    fields = ["patient", "date"]
 
 
 @method_decorator(login_required, name="dispatch")
@@ -316,7 +396,12 @@ class MetricCreation(CreateView):
     def form_valid(self, form):
         if not form.cleaned_data.get("visit"):
             patient = form.cleaned_data.get("patient")
-            visit = Visit.objects.create(patient=patient)
+            entered_by = self.request.user if self.request.user.is_authenticated else None
+            visit = Visit.objects.create(
+                patient=patient,
+                multiple_visit=form.cleaned_data.get("multiple_visit"),
+                entered_by=entered_by,
+            )
             form.instance.visit = visit
         return super().form_valid(form)
 
@@ -344,15 +429,7 @@ class MetricDelete(DeleteView):
 @method_decorator(login_required, name="dispatch")
 class EnvironmentMetricCreation(CreateView):
     model = EnvironmentMetric
-    fields = [
-        "visit",
-        "dietary_diversity_score",
-        "breastfeeding",
-        "immunization_up_to_date",
-        "recent_illness",
-        "recent_illness_type",
-        "notes",
-    ]
+    form_class = EnvironmentMetricCreateForm
 
     def get_initial(self):
         initial = super().get_initial()
@@ -367,14 +444,7 @@ class EnvironmentMetricCreation(CreateView):
 @method_decorator(login_required, name="dispatch")
 class EnvironmentMetricUpdate(UpdateView):
     model = EnvironmentMetric
-    fields = [
-        "dietary_diversity_score",
-        "breastfeeding",
-        "immunization_up_to_date",
-        "recent_illness",
-        "recent_illness_type",
-        "notes",
-    ]
+    form_class = EnvironmentMetricForm
 
     def get_success_url(self):
         return reverse("visits:detail", args=(self.object.visit.id,))
@@ -643,6 +713,34 @@ class CommunityDelete(DeleteView):
 
 
 @method_decorator(login_required, name="dispatch")
+class JornadaDetail(DetailView):
+    model = MultipleVisit
+    template_name = "anthrocalc/jornada_detail.html"
+    context_object_name = "jornada"
+
+    def get_queryset(self):
+        return MultipleVisit.objects.filter(community_id=self.kwargs["community_id"]).select_related(
+            "community"
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        visits = list(
+            Visit.objects.filter(multiple_visit=self.object)
+            .select_related("patient", "patient__family", "metric", "entered_by")
+            .order_by("patient__name")
+        )
+        for visit in visits:
+            try:
+                metric = visit.metric
+            except Metric.DoesNotExist:
+                metric = None
+            visit.status_info = get_nutritional_status(metric) if metric is not None else None
+        context["visits"] = visits
+        return context
+
+
+@method_decorator(login_required, name="dispatch")
 class CommunityMassVisit(View):
     template_name = "anthrocalc/community_mass_visit.html"
 
@@ -676,9 +774,20 @@ class CommunityMassVisit(View):
             })
         return data
 
+    def _search_results(self, community, query):
+        if not query:
+            return []
+        return list(
+            Patient.objects.filter(family__community=community)
+            .filter(Q(name__icontains=query) | Q(code__icontains=query))
+            .select_related("family")
+            .order_by("name", "pk")
+        )
+
     def get(self, request, pk):
         community = get_object_or_404(Community, pk=pk)
         patients_data = self.get_patients_data(community)
+        query = (request.GET.get("q") or "").strip()
 
         header_form = MassMeasurementHeaderForm(initial={
             "date": now().date(),
@@ -702,6 +811,8 @@ class CommunityMassVisit(View):
                 "header_form": header_form,
                 "formset": formset,
                 "rows": rows,
+                "query": query,
+                "search_results": self._search_results(community, query),
             },
         )
 
@@ -727,6 +838,7 @@ class CommunityMassVisit(View):
                     pass
 
             created_count = 0
+            entered_by = request.user if request.user.is_authenticated else None
             with transaction.atomic():
                 multiple_visit = MultipleVisit.objects.create(
                     community=community,
@@ -747,13 +859,14 @@ class CommunityMassVisit(View):
                             True if standing_val == "True" else False if standing_val == "False" else None
                         )
                         muac = form.cleaned_data.get("muac")
-                        edema = form.cleaned_data.get("edema", False)
+                        edema = form.cleaned_data.get("edema")
 
                         visit = Visit.objects.create(
                             patient=patient,
                             date=jornada_datetime,
                             multiple_visit=multiple_visit,
                             notes=row_notes if row_notes else None,
+                            entered_by=entered_by,
                         )
                         metric = Metric(
                             visit=visit,

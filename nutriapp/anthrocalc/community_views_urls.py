@@ -6,6 +6,7 @@ from .views import (
     CommunityUpdate,
     CommunityDelete,
     CommunityMassVisit,
+    JornadaDetail,
 )
 
 app_name = "nutriapp"
@@ -17,4 +18,5 @@ urlpatterns = [
     path("communities/<int:pk>/edit/", CommunityUpdate.as_view(), name="edit"),
     path("communities/<int:pk>/delete/", CommunityDelete.as_view(), name="delete"),
     path("communities/<int:pk>/mass-visit/", CommunityMassVisit.as_view(), name="mass_visit"),
+    path("communities/<int:community_id>/jornada/<int:pk>/", JornadaDetail.as_view(), name="jornada"),
 ]

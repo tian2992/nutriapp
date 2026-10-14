@@ -4,4 +4,28 @@
 #   pip install -r requirements.txt -r requirements-dev.txt
 #   playwright install chromium
 #   python manage.py test anthrocalc.tests_e2e
+# Development dependencies
+-r requirements.txt
+
+# Code Quality
+black==24.1.1
+flake8==7.0.0
+isort==5.13.2
+pylint==3.0.3
+
+# Testing
+pytest==7.4.4
+pytest-django==4.7.0
+pytest-cov==4.1.0
+
+# Debugging & Profiling
+ipython==8.18.1
+django-extensions==3.2.3
+
+# Environment variables
+python-dotenv==1.0.0
+
+# API Documentation (optional)
+drf-spectacular==0.27.0
+
 playwright
