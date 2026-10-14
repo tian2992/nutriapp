@@ -136,13 +136,25 @@ class PatientDetail(DetailView):
         context["visits"] = visits
         visits_metrics = fetch_metrics_from_visits(visits)
 
+        measured = []
         for item in visits_metrics:
             age = calculate_age_at_date(self.object, item["visit"].date)
             item["age_days"] = age["days"]
             item["age_months"] = age["months"]
+            item["is_latest_measured"] = False
+            if item["metric"]:
+                prev = measured[-1]["metric"] if measured else None
+                item["status_info"] = get_nutritional_status(item["metric"], prev)
+                measured.append(item)
+            else:
+                item["status_info"] = None
+
+        if measured:
+            measured[-1]["is_latest_measured"] = True
 
         context["visits_metrics"] = visits_metrics
-        context["measurement_count"] = sum(1 for item in visits_metrics if item["metric"])
+        context["measurement_count"] = len(measured)
+        context["latest_status_info"] = measured[-1]["status_info"] if measured else None
         return context
 
 

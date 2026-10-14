@@ -25,6 +25,16 @@
         </dd>
         <dt class="col-sm-2 text-md-right">{% translate "Mediciones:" %}</dt>
         <dd class="col-sm-10"><i>{{ measurement_count }}</i></dd>
+        <dt class="col-sm-2 text-md-right">{% translate "Estado nutricional:" %}</dt>
+        <dd class="col-sm-10">
+            {% if latest_status_info %}
+                {% for badge in latest_status_info.badges %}
+                    <span class="badge bg-{{ badge.class }}">{{ badge.text }}</span>
+                {% endfor %}
+            {% else %}
+                <span class="text-muted">{% translate "Sin datos" %}</span>
+            {% endif %}
+        </dd>
     </dl>
 </div>
 
@@ -39,12 +49,14 @@
       <th>{% translate "Talla (cm)" %}</th>
       <th>{% translate "Peso (lb)" %}</th>
       <th>WFAZ</th>
+      <th>HAZ</th>
       <th>WHZ</th>
+      <th>{% translate "Estado" %}</th>
     </tr>
   </thead>
   <tbody>
     {% for item in visits_metrics %}
-    <tr>
+    <tr {% if item.is_latest_measured %}class="table-info"{% endif %}>
       <td><a href="{% url 'visits:detail' item.visit.id %}">{{ item.visit.date|date:"Y-m-d H:i" }}</a></td>
       <td>
         {% if item.age_days is not None and item.age_months is not None %}
@@ -82,8 +94,24 @@
         {% endif %}
       </td>
       <td>
+        {% if item.metric and item.metric.hfaz is not None %}
+          {{ item.metric.hfaz|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
         {% if item.metric and item.metric.wfhz is not None %}
           {{ item.metric.wfhz|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if item.status_info %}
+            {% for badge in item.status_info.badges %}
+                <span class="badge bg-{{ badge.class }}">{{ badge.text }}</span>
+            {% endfor %}
         {% else %}
           —
         {% endif %}

@@ -121,6 +121,14 @@ class PatientListMeasurementAndFamilyTests(BaseAuthenticatedTestCase):
             visit = Visit.objects.create(patient=self.patient)
             Metric.objects.create(visit=visit, weight=weight, height=height, standing_or_upright=True)
 
+    def test_patient_detail_shows_nutritional_status_badges(self):
+        response = self.client.get(reverse("patients:detail", args=[self.patient.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["latest_status_info"])
+        self.assertTrue(response.context["latest_status_info"]["badges"])
+        self.assertContains(response, "Estado nutricional")
+        self.assertContains(response, ">HAZ<")
+
     def test_patient_list_shows_measurement_count(self):
         response = self.client.get(reverse("patients:list"))
         self.assertEqual(response.status_code, 200)

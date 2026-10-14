@@ -8,7 +8,7 @@
   - Después de guardar, mostrar el estado nutricional en la misma vista que en comunidad.
   - Mostrar una marca de confirmación cuando la medición se haya guardado correctamente.
   - Al guardar la jornada, asociar cada medición con la jornada correspondiente y conservar el resto de valores ingresados.
-- [ ] Mejorar el feedback visual de la vista individual del paciente.
+- [x] Mejorar el feedback visual de la vista individual del paciente.
 
 ## Prioridad media
 - [x] Agregar un campo opcional para la fecha de ingreso al programa de cada paciente.
