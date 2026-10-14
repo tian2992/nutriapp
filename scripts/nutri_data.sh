@@ -15,6 +15,13 @@
 #       Runs `manage.py loaddata`. Refuses a database that already holds
 #       patients or visits unless --force: fixtures carry primary keys and
 #       overwrite whatever row has the same one.
+#   sync-schema [--repair] [--no-makemigrations]
+#       Runs `makemigrations`, then `migrate --run-syncdb`, then compares every
+#       model's table and columns with the database. --run-syncdb only creates
+#       tables for apps WITHOUT migrations, so it cannot add a column such as
+#       visit.entered_by to a table that already exists; the comparison finds
+#       those, and --repair adds them (create_model / add_field, as a
+#       migration would). Exit 4 if drift remains. See scripts/sync_schema.sh.
 #
 # Modes (--mode, or NUTRI_MODE; default auto)
 #   local      python manage.py in this checkout, using its .venv if present.
@@ -288,11 +295,110 @@ cmd_import_fixtures() {
   run_manage loaddata "$runtime_path"
 }
 
+# Compares the live schema with the models, table by table and column by
+# column. Passed to `manage.py shell -c`, so it needs no image rebuild.
+read -r -d '' SYNC_SCHEMA_PY <<'PY' || true
+import sys
+from django.apps import apps
+from django.db import connection
+
+
+def find_drift():
+    missing_tables, missing_columns = [], []
+    with connection.cursor() as cursor:
+        tables = set(connection.introspection.table_names(cursor))
+        for model in apps.get_models():
+            meta = model._meta
+            if meta.proxy or not meta.managed or meta.swapped:
+                continue
+            if meta.db_table not in tables:
+                missing_tables.append(model)
+                continue
+            have = {c.name for c in connection.introspection.get_table_description(cursor, meta.db_table)}
+            for field in meta.local_concrete_fields:
+                if field.column not in have:
+                    missing_columns.append((model, field))
+    return missing_tables, missing_columns
+
+
+def show(tables, columns):
+    for m in tables:
+        print(f"  missing table   {m._meta.db_table}  ({m._meta.label})")
+    for m, f in columns:
+        print(f"  missing column  {m._meta.db_table}.{f.column}  ({m._meta.label}.{f.name})")
+
+
+tables, columns = find_drift()
+if not tables and not columns:
+    print("Schema matches the models: every table and column exists.")
+    sys.exit(0)
+
+print("Schema drift (models expect these, the database lacks them):")
+show(tables, columns)
+if not REPAIR:
+    print("Re-run with --repair to add them.")
+    sys.exit(4)
+
+# Same operations a migration would run, without relying on django_migrations
+# (whose history may not match the database).
+if tables:
+    try:
+        with connection.schema_editor() as editor:
+            for m in tables:
+                editor.create_model(m)
+        print("  created: " + ", ".join(m._meta.db_table for m in tables))
+    except Exception as exc:
+        print(f"  could not create tables: {exc}")
+for m, f in columns:
+    try:
+        with connection.schema_editor() as editor:
+            editor.add_field(m, f)
+        print(f"  added column {m._meta.db_table}.{f.column}")
+    except Exception as exc:
+        print(f"  could not add {m._meta.db_table}.{f.column}: {exc}")
+
+tables, columns = find_drift()
+if tables or columns:
+    print("Still out of sync:")
+    show(tables, columns)
+    sys.exit(4)
+print("Schema now matches the models.")
+PY
+
+cmd_sync_schema() {
+  local repair=0 makemig=1
+  while (($#)); do
+    case "$1" in
+      --repair) repair=1; shift ;;
+      --no-makemigrations) makemig=0; shift ;;
+      -h|--help) usage; exit 0 ;;
+      *) die "sync-schema: unexpected argument '$1'" ;;
+    esac
+  done
+
+  if [ "$makemig" = 1 ]; then
+    log "makemigrations (written to the mounted migrations directory)"
+    run_manage makemigrations --noinput
+  fi
+  log "migrate --run-syncdb"
+  run_manage migrate --noinput --run-syncdb
+
+  local py_repair=False rc=0
+  [ "$repair" = 1 ] && py_repair=True
+  run_manage shell -c "REPAIR = $py_repair"$'\n'"$SYNC_SCHEMA_PY" || rc=$?
+  case "$rc" in
+    0) ;;
+    4) die "sync-schema: the database is still out of sync with the models (see above)." ;;
+    *) die "sync-schema: could not inspect the database (exit $rc)" ;;
+  esac
+}
+
 log "mode=$MODE"
 case "$COMMAND" in
+  sync-schema|sync_schema)           cmd_sync_schema "$@" ;;
   load-xlsx|load_xlsx)               cmd_load_xlsx "$@" ;;
   export-fixtures|export_fixtures)   cmd_export_fixtures "$@" ;;
   import-fixtures|import_fixtures)   cmd_import_fixtures "$@" ;;
   help)                              usage ;;
-  *) die "unknown command '$COMMAND' (load-xlsx, export-fixtures, import-fixtures)" ;;
+  *) die "unknown command '$COMMAND' (load-xlsx, export-fixtures, import-fixtures, sync-schema)" ;;
 esac
