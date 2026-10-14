@@ -20,9 +20,12 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 
+from .health import health
+
 app_name = "nutriapp"
 
 urlpatterns = [
+    path("health/", health, name="health"),
     path("admin/", admin.site.urls),
     path("", include("anthrocalc.community_views_urls", namespace="communities")),
     path("", include("anthrocalc.patient_views_urls", namespace="patients")),
