@@ -178,6 +178,13 @@ run_manage() {
 # compose and container runs apply migrations in entrypoint.sh; a bare local
 # checkout may be on a fresh SQLite file with no tables.
 ensure_schema() {
+  # Migrations are not committed; without them `migrate` only warns that the
+  # models have unmigrated changes and creates no anthrocalc tables.
+  local migrations_dir="$MANAGE_DIR/anthrocalc/migrations"
+  [ "$MODE" != compose ] || migrations_dir="$REPO_ROOT/nutriapp/anthrocalc/migrations"
+  compgen -G "$migrations_dir/0*.py" >/dev/null \
+    || die "no migrations in $migrations_dir. Generate them first: python manage.py makemigrations (server: ansible-playbook server_deploy.yml --tags django_setup)"
+
   if [ "$MODE" = local ] && [ "${NUTRI_SKIP_MIGRATE:-0}" != 1 ]; then
     log "applying migrations (NUTRI_SKIP_MIGRATE=1 to skip)"
     run_manage migrate --noinput >&2

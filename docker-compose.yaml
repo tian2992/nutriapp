@@ -15,6 +15,11 @@ services:
     volumes:
       - ./static:/app/static
       - ./media:/app/media
+      # Migrations are not committed: server_deploy.yml generates them with
+      # `makemigrations`. Without this mount they would be written inside a
+      # throwaway `run --rm` container and lost, and every later `migrate` would
+      # warn "models have changes not reflected in a migration".
+      - ./nutriapp/anthrocalc/migrations:/app/anthrocalc/migrations
     depends_on:
       db:
         condition: service_healthy

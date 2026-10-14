@@ -88,11 +88,56 @@
 
     - name: Fail when the host has not been deployed yet
       ansible.builtin.fail:
-        msg: "{{ item.item }} is missing on the host; run server_deploy.yml first (and make sure this branch of the repo is what was deployed)."
+        msg: "{{ item.item }} is missing on the host; run server_deploy.yml first (the django_setup tag generates the migrations) and make sure this branch of the repo is what was deployed."
       when: not item.stat.exists
       loop: "{{ nutri_deployed.results }}"
       loop_control:
         label: "{{ item.item }}"
+      tags: [always]
+
+    # Migrations are not committed. server_deploy.yml generates them with
+    # `makemigrations` inside a `run --rm` container, so they only survive if
+    # docker-compose.yaml mounts the host directory into the web service. A
+    # compose file from before that mount leaves the host holding files the
+    # containers never see.
+    - name: Read the effective compose configuration
+      ansible.builtin.command:
+        argv: [docker, compose, --project-directory, "{{ project_dir }}", config, --format, json]
+      register: nutri_compose_config
+      changed_when: false
+      tags: [always]
+
+    - name: Check the web service mounts the migrations directory
+      ansible.builtin.assert:
+        that:
+          - >-
+            nutri_web_migration_mounts | length == 1 and
+            nutri_web_migration_mounts[0].source.endswith('/nutriapp/anthrocalc/migrations')
+        fail_msg: >-
+          docker-compose.yaml on the host does not mount
+          nutriapp/anthrocalc/migrations at /app/anthrocalc/migrations in
+          service web. Update the repo on the host (git pull / server_deploy.yml
+          --tags app_setup) so generated migrations persist across containers.
+      vars:
+        nutri_web_migration_mounts: >-
+          {{ ((nutri_compose_config.stdout | from_json).services.web.volumes | default([]))
+             | selectattr('target', 'equalto', '/app/anthrocalc/migrations') | list }}
+      tags: [always]
+
+    - name: Look for generated migrations in the mounted directory
+      ansible.builtin.find:
+        paths: "{{ project_dir }}/nutriapp/anthrocalc/migrations"
+        patterns: "0*.py"
+      register: nutri_migrations
+      tags: [always]
+
+    - name: Fail when no migrations have been generated
+      ansible.builtin.fail:
+        msg: >-
+          No migrations in {{ project_dir }}/nutriapp/anthrocalc/migrations, so
+          the database has no anthrocalc tables. Generate and apply them with
+          server_deploy.yml --tags django_setup, then re-run.
+      when: nutri_migrations.matched == 0
       tags: [always]
 
   tasks:
