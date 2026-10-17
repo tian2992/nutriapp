@@ -1,4 +1,5 @@
 {% extends 'anthrocalc/base.html' %}
+{% load static %}
 {% load crispy_forms_tags %}
 {% load i18n %}
 
@@ -94,7 +95,15 @@
                         <th>{% translate "Tutor / Madre" %}</th>
                         <th style="width: 100px;">{% translate "Fec. Nac." %}</th>
                         <th style="width: 130px;" class="text-center table-secondary text-dark">{% translate "Ant: Peso / Talla" %}</th>
-                        <th style="width: 110px;">{% translate "Peso (kg) *" %}</th>
+                        <th style="width: 140px;">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span>{% translate "Peso" %} *</span>
+                                <div class="btn-group btn-group-sm" role="group" id="mass-unit-toggle" aria-label="Unidad de peso">
+                                    <button type="button" class="btn btn-xs btn-primary active py-0 px-1" data-unit="kg" style="font-size: 0.75rem;">kg</button>
+                                    <button type="button" class="btn btn-xs btn-outline-light py-0 px-1" data-unit="lb" style="font-size: 0.75rem;">lb</button>
+                                </div>
+                            </div>
+                        </th>
                         <th style="width: 110px;">{% translate "Talla (cm) *" %}</th>
                         <th style="width: 130px;">{% translate "Posición" %}</th>
                         <th style="width: 95px;">{% translate "MUAC (cm)" %}</th>
@@ -132,6 +141,7 @@
                         </td>
                         <td>
                             {{ form.weight }}
+                            <div class="weight-row-feedback text-muted small mt-1" style="font-size: 0.75rem;"></div>
                             {% if form.weight.errors %}
                                 <div class="text-danger small">{{ form.weight.errors }}</div>
                             {% endif %}
@@ -254,4 +264,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 </script>
+
+<script src="{% static '/js/weight_unit_converter.js' %}"></script>
+
 {% endblock %}
