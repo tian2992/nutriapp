@@ -489,7 +489,8 @@ class LoggingSettingsTests(SimpleTestCase):
         mock_metric.height = 80.0
         mock_metric.standing_or_upright = True
 
-        with patch.object(pygrowup.Observation, "wfh", side_effect=ValueError("Measurement out of bounds")):
+        with patch.object(pygrowup.Observation, "wfh", side_effect=ValueError("Measurement out of bounds")), \
+             patch.object(pygrowup.Observation, "wfl", side_effect=ValueError("Measurement out of bounds")):
             with self.assertLogs("anthrocalc", level="WARNING") as cm:
                 calculate_zscore_for_metric(mock_metric)
                 self.assertTrue(any("Error calculating WHZ: Measurement out of bounds" in out for out in cm.output))
