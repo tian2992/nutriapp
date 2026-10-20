@@ -1,7 +1,8 @@
 {% extends 'anthrocalc/base.html' %}
-{% block content %}
+{% load static %}
 {% load crispy_forms_tags %}
 {% load i18n %}
+{% block content %}
 
 <div class="mb-3">
     <p class="mb-2">Antes de registrar, busque por nombre o código por si el niño ya está en el sistema.</p>
@@ -54,6 +55,9 @@
         </div>
     </div>
     {% endif %}
-    <input type="submit" value="{% translate "Submit" %}" />
+    <input type="submit" class="btn btn-primary mt-3" value="{% translate "Submit" %}" />
 </form>
+
+<script src="{% static '/js/weight_unit_converter.js' %}"></script>
+
 {% endblock %}

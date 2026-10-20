@@ -160,6 +160,7 @@ class PatientForm(forms.ModelForm):
         "birth_weight",
         "birth_length",
         "maternal_education",
+        "notes",
     ]
 
     def __init__(self, *args, **kwargs):

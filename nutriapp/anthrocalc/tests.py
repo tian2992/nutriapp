@@ -1689,3 +1689,39 @@ class RekeyPatientsCommandTests(TestCase):
         self.assertEqual(patient.name, "María López")
         self.assertEqual(patient.mother_name, "Ana López")
         self.assertEqual(family.responsible_name, "Familia López")
+
+
+class PoundInputFormsUnitTests(BaseAuthenticatedTestCase):
+    def setUp(self):
+        super().setUp()
+        self.community = Community.objects.create(name="Comunidad Test Libras")
+        self.family = Family.objects.create(responsible_name="Familia Test", community=self.community)
+        self.patient = Patient.objects.create(
+            code="PND-01",
+            name="Niño Libras",
+            gender="M",
+            dob=datetime.date(2022, 1, 1),
+            family=self.family,
+        )
+
+    def test_metric_creation_form_renders_weight_field(self):
+        visit = Visit.objects.create(patient=self.patient)
+        response = self.client.get(reverse("metrics:new") + f"?visit={visit.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="id_weight"')
+        self.assertContains(response, "weight_unit_converter.js")
+
+    def test_patient_creation_form_renders_birth_weight_field(self):
+        response = self.client.get(reverse("patients:new"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="id_birth_weight"')
+        self.assertContains(response, "weight_unit_converter.js")
+
+    def test_mass_visit_template_renders_master_toggle_and_row_feedbacks(self):
+        response = self.client.get(reverse("communities:mass_visit", args=[self.community.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="mass-unit-toggle"')
+        self.assertContains(response, 'data-unit="kg"')
+        self.assertContains(response, 'data-unit="lb"')
+        self.assertContains(response, "weight-row-feedback")
+        self.assertContains(response, "weight_unit_converter.js")
