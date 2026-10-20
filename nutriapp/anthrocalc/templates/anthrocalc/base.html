@@ -23,7 +23,7 @@
             </nav>
           </div>
         </div>
-        <div class="content container py-3">
+        <div class="{% block content-block-styles %}content container py-3 {% endblock %}">
           {% if messages %}
             {% for message in messages %}
               <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
